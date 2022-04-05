@@ -6,21 +6,26 @@ export default class ShikimoriApi {
 
     }
 
-
     getAnimeWatchList() {
-        axios.get(`${this.baseUrl}v2/user_rates`, {
+        let watchList = {};
+        return axios.get(`${this.baseUrl}v2/user_rates`, {
             headers: {
-                'User-Agent': 'node-shikimori'
+                'User-Agent': 'JsAnimeBot',
             },
             params: {
                 "user_id": 946450,
                 "target_type": "Anime",
                 "status": "watching",
             }
-        }).then((res) => {
-            console.log(res);
-        }).catch((err) => {
-            console.log(err);
         });
+    }
+
+    getAnimeById(id) {
+        return axios.get(`${this.baseUrl}animes/${id}`, {
+            headers: {
+                'User-Agent': 'JsAnimeBot',
+            },
+        });
+
     }
 }
