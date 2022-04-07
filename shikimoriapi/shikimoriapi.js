@@ -3,7 +3,6 @@ import axios from "axios";
 export default class ShikimoriApi {
     constructor() {
         this.baseUrl = 'https://shikimori.one/api/';
-
     }
 
     getAnimeWatchList() {

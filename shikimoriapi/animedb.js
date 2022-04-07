@@ -73,4 +73,54 @@ export default class AnimeDB {
         });
         return ids;
     }
+
+    setFollow(animeID, dubName, animeURL) {
+        for (let i = 0; i < this.cachedAnime.length; i++) {
+            const element = this.cachedAnime[i];
+            console.log(element.animeID);
+            if (element.animeID !== animeID) {
+                continue;
+            }
+            if (!this.isAnimeInDB(element.animeID)) {
+                continue;
+            }
+            sqlite.run(
+                `UPDATE animeFollows
+                 SET follow = 1, dubName = ?, animeURL = ?
+                 WHERE animeID = ?`, [dubName, animeURL, animeID],
+                function (res) {
+                    if (res.error)
+                        throw res.error;
+                }
+            );
+            this.cachedAnime[i].follow = 1;
+            this.cachedAnime[i].animeURL = animeURL;
+            this.cachedAnime[i].dubName = dubName;
+        }
+    }
+
+    unfollow(animeID) {
+        for (let i = 0; i < this.cachedAnime.length; i++) {
+            const element = this.cachedAnime[i];
+            console.log(element.animeID);
+            if (element.animeID !== animeID) {
+                continue;
+            }
+            if (!this.isAnimeInDB(element.animeID)) {
+                continue;
+            }
+            sqlite.run(
+                `UPDATE animeFollows
+                 SET follow = 1, dubName = NULL, animeURL = NULL
+                 WHERE animeID = ?`, [animeID],
+                function (res) {
+                    if (res.error)
+                        throw res.error;
+                }
+            );
+            this.cachedAnime[i].follow = 0;
+            this.cachedAnime[i].animeURL = null;
+            this.cachedAnime[i].dubName = null;
+        }
+    }
 }
