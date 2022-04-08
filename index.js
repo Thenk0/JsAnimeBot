@@ -1,19 +1,36 @@
 import AnimeDB from "./shikimoriapi/animedb.js";
 import ShikimoriApi from "./shikimoriapi/shikimoriapi.js";
-import puppeteer from "puppeteer";
-import Discord from "discord.js";
+import Discord, {
+    MessageAttachment
+} from "discord.js";
 import Config from "./config.js";
+import WebScraper from "./webscraper/webscraper.js";
 
 const shikimoriApi = new ShikimoriApi();
 const animeDB = new AnimeDB();
+console.log(animeDB.cachedFollows);
+console.log(animeDB.cachedFollows[0].dubs);
 const client = new Discord.Client({
     intents: ["GUILDS", "GUILD_MESSAGES"]
 });
+const webScraper = new WebScraper();
+webScraper.initialize();
 client.login(Config.BOT_TOKEN);
 const prefix = "!";
+
+function delay(time) {
+    return new Promise(function (resolve) {
+        setTimeout(resolve, time)
+    });
+}
+let followProcess = false;
+let dubPick = false;
+let animeFollowObj = {};
+
 client.on("messageCreate", function (message) {
     if (message.author.bot) return;
     if (!message.content.startsWith(prefix)) return;
+    if (message.channel.id !== '961206591946907668') return;
 
     const commandBody = message.content.slice(prefix.length);
     const args = commandBody.split(' ');
@@ -32,13 +49,152 @@ client.on("messageCreate", function (message) {
     if (command === "lmoa") {
         message.reply(`https://media.rawg.io/media/resize/1280/-/screenshots/fa0/fa09b6849a915df4f9e01086b6f9f9d3.jpg`);
     }
-});
+    
+    // Commands
+    if (command === "forceupdate") {
+        message.reply(`Exception: Not implemented`);
+    }
+    if (command === "follow") {
+        if (args.length < 1) {
+            message.reply(`Нет параметра <ID>, !follow <ID>`);
+            return;
+        }
+        if (args.length > 1) {
+            message.reply(`Слишком много параметров, команда принимает только 1 параметр <ID>`);
+            return;
+        }
+        if (followProcess) {
+            message.reply(`Процесс follow уже запущен, остановить его можно с помощью команды !abort`);
+            return;
+        }
+        followProcess = true;
+        (async () => {
+            const timeBefore = Date.now();
+            const id = args[0];
+            animeFollowObj.id = id;
+            animeFollowObj.url = id;
+            let info = await webScraper.getAnimeInfoByID(id);
+            if (info == 404) {
+                message.reply(`404, ничего не найдено`);
+                return;
+            }
+            const timeAfter = Date.now() - timeBefore;
+            let response = `
+            После запроса на Aniu, получено это аниме.\n${info.img}\nНазвание: ${info.title}\nЕсли результат верный, команда !confirm\nЕсли не верный, команда !changeurl <URI>\n`;
+            message.reply(`${response} \nThis action took ${timeAfter}ms`);
+        })();
+    }
+    if (command === "confirm") {
+        if (!followProcess) {
+            message.reply(`Подтверждать нечего`);
+            return;
+        }
 
-function delay(time) {
-    return new Promise(function (resolve) {
-        setTimeout(resolve, time)
-    });
-}
+        if (dubPick && args.length === 0) {
+            message.reply(`Во время выбора озвучки, команда ожидает номер озвучки !confirm <n>`);
+            return;
+        }
+        if (dubPick && args.length > 1) {
+            message.reply(`Во время выбора озвучки, команда только 1 параметр. Номер озвучки <n> !confirm <n>`);
+            return;
+        }
+        if (dubPick) {
+            const n = parseInt(args[0]);
+            const dubObj = animeFollowObj.dubInfo[n - 1];
+            animeDB.cacheDubs(animeFollowObj.dubInfo);
+            const dub = animeDB.getDubCached(dubObj.dubName);
+            console.log(animeFollowObj.id, dub, animeFollowObj.url, dubObj.episodes);
+            animeDB.setFollow(animeFollowObj.id, dub, animeFollowObj.url, dubObj.episodes);
+            message.reply(`Вы выбрали озвучку ${dubObj.dubName}`);
+        }
+
+        if (!dubPick && args.length !== 0) {
+            message.reply(`Слишком много параметров: Перед выбором озвучки, команда не ожидает никаких параметров`);
+            return;
+        }
+
+        if (!dubPick) {
+            message.reply(`Запрашиваем сайт на информацию об озвучках. Пожалуйста подождите...`);
+            (async () => {
+                dubPick = true;
+                const timeBefore = Date.now();
+                let dubs = await webScraper.getDubEpisodes(animeFollowObj.url);
+                if (dubs == 404) {
+                    message.reply(`404, страница не найдена`);
+                    return;
+                }
+                const timeAfter = Date.now() - timeBefore;
+                let response = ""
+                for (let i = 0; i < dubs.length; i++) {
+                    const element = dubs[i];
+                    response = `${response}\n${i+1}). ${element.dubName}: ${element.episodes} серий`;
+                }
+                animeFollowObj.dubInfo = dubs;
+                message.reply(`${response}\nВыберете озвучку командой !confirm <n> \nThis action took ${timeAfter}ms`);
+                return;
+            })();
+        }
+    }
+    if (command === "changeurl") {
+        if (!followProcess) {
+            message.reply(`Exception: Not implemented`);
+            return;
+        }
+        if (args.length < 1) {
+            message.reply(`В процессе follow, команда ожидает параметр <URI>, !changeurl <URI>`);
+            return;
+        }
+        if (args.length > 1) {
+            message.reply(`В процессе follow, команда принимает только 1 параметр <URI>\n Чтобы остановить процесс, команда !abort`);
+            return;
+        }
+        (async () => {
+            const timeBefore = Date.now();
+            const id = args[0];
+            animeFollowObj.url = id;
+            let info = await webScraper.getAnimeInfoByID(id);
+            if (info == 404) {
+                message.reply(`404, ничего не найдено`);
+                return;
+            }
+            const timeAfter = Date.now() - timeBefore;
+            let response = `
+            После запроса на Aniu, получено это аниме.\n${info.img}\nНазвание: ${info.title}\nЕсли результат верный, команда !confirm\nЕсли не верный, команда !changeurl <URI>\n`;
+            message.reply(`${response} \nThis action took ${timeAfter}ms`);
+        })();
+    }
+    if (command === "abort") {
+        if (!followProcess) {
+            message.reply(`Процесс follow не был запущен`);
+            return;
+        }
+        followProcess = false;
+        dubPick = false;
+        animeFollowObj = {};
+        message.reply(`Процесс follow успешно остановлен`);
+    }
+
+    if (command === "unfollow") {
+        message.reply(`Exception: Not implemented`);
+    }
+    if (command === "getdub") {
+        message.reply(`Exception: Not implemented`);
+    }
+    if (command === "getfollows") {
+        const follows = animeDB.cachedFollows;
+        if (!follows.length) {
+            message.reply("Список пуст");
+            return;
+        }
+        message.reply(follows);
+    }
+    if (command === "changedub") {
+        message.reply(`Exception: Not implemented`);
+    }
+    if (command === "help") {
+        message.reply(`Exception: Not implemented`);
+    }
+});
 
 async function checkShikimoriWatchList() {
     console.log("Checking...")
@@ -48,84 +204,18 @@ async function checkShikimoriWatchList() {
     for (let i = 0; i < animes.data.length; i++) {
         const anime = animes.data[i];
         if (!animeDB.isAnimeInDBCached(anime.target_id)) {
-            await sleep(1000 / 5);
+            await delay(1000 / 5);
             let animebyID = await shikimoriApi.getAnimeById(anime.target_id);
             animeDB.writeAnimeToDB(animebyID.data);
+            console.log(`Found new anime: ${animebyID.data.russian}`);
         }
     }
     console.log("Check finished. Waiting...");
 }
 
-(async () => {
-    const browser = await puppeteer.launch({
-        headless: false,
-        slowMo: 250, // slow down by 250ms,
-        args: ['--start-maximized'],
-    });
-    const page = await browser.newPage();
-    await page.setViewport({
-        width: 1600,
-        height: 900
-    });
-    await page.setRequestInterception(true);
-    page.on("request", (request) => {
-        const url = request.url();
-        const filters = [
-            "appmetrika.yandex.ru",
-            "mc.yandex.ru",
-            "googleadservices",
-            "doubleclick",
-            "idsync",
-            "quant",
-            "facebook",
-            "amazon",
-            "tracking",
-            "taboola",
-            ".gif",
-            "google-analytics",
-            "forter",
-        ];
-
-        const shouldAbort = filters.some(
-            (urlPart) => url.includes(urlPart) && !url.includes("https://www.retailmenot.com/tng/_next/static/chunks/commons.")
-        );
-        if (shouldAbort) request.abort();
-        else {
-            request.continue();
-        }
-    });
-    await page.goto('https://aniu.ru/anime/sabikui_bisco-48414/', {});
-    console.log("waiting for selector");
-    await page.waitForSelector("#player-iframe");
-    console.log("selector loaded");
-    console.log("searching for frame");
-    let elementHandle = await page.$("#player-iframe");
-    console.log("frame found");
-    let frame = await elementHandle.contentFrame();
-    console.log("waiting for selector");
-    await frame.waitForSelector(".serial-panel");
-    console.log("selector loaded");
-    delay(500);
-    await page.evaluate(selector => {
-        window.scrollBy(0, 1000);
-    });
-    await frame.click("body > .main-box > .serial-panel > .serial-translations-box > .select-button");
-    console.log("clicked");
-    const [el] = await frame.$x("//span[text()='AniRise']");
-    await el.click();
-
-    elementHandle = await page.$("#player-iframe");
-    console.log("frame found");
-    frame = await elementHandle.contentFrame();
-    await frame.waitForSelector(".serial-panel");
-    let episodes = await frame.$$(".serial-series-box > .dropdown > .dropdown-content > div");
-    console.log(episodes.length)
-    await browser.close();
-})();
-
-// checkShikimoriWatchList().catch((err) => {
-//     console.log(err);
-// });
+checkShikimoriWatchList().catch((err) => {
+    console.log(err);
+});
 
 
 // setInterval(() => {
