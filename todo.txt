@@ -1,0 +1,2 @@
+- Add 404 checking for non existent animes
+- Add a

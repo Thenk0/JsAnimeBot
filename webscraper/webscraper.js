@@ -13,7 +13,7 @@ export default class WebScraper {
         });
     }
 
-    async getEpisodes() {
+    async getEpisodes(animeURL, dubs) {
         const page = await this.browser.newPage();
         await page.setViewport({
             width: 1600,
@@ -46,42 +46,61 @@ export default class WebScraper {
                 request.continue();
             }
         });
-        const response = await page.goto('https://aniu.ru/anime/sabikui_bisco-48414/', {});
-        if (response.status() == 404) {
+        const response = await page.goto(`https://aniu.ru/anime/${animeURL}`, {});
+        if (response.status() === 404) {
             page.close();
             return 404;
         }
-        console.log("waiting for selector");
         await page.waitForSelector("#player-iframe");
-        const [h5] = page.$x("//h5[text()='Рейтинг']")
-        console.log("selector loaded");
-        console.log("searching for frame");
         let elementHandle = await page.$("#player-iframe");
-        console.log("frame found");
+        let [h5] = await page.$x("//h5[text()='Рейтинг']");
         let frame = await elementHandle.contentFrame();
-        console.log("waiting for selector");
         await frame.waitForSelector(".serial-panel");
-        console.log("selector loaded");
-        await page.evaluate(selector => {
-            h5.evaluate(el => el.scrollIntoView());
-        });
-        await frame.click("body > .main-box > .serial-panel > .serial-translations-box > .select-button");
-        console.log("clicked");
-        const [el] = await frame.$x("//div[span[text()='Wakanim'] and span[text()='SUB']]");
-        await Promise.all([
-            el.click(),
-            frame.waitForNavigation({
-                waitUntil: 'load'
-            }),
-        ]);
+        await h5.evaluate(el => el.scrollIntoView());
+        for (let i = 0; i < dubs.length; i++) {
+            const dub = dubs[i];
+            const dubName = dub.dubName;
+            let [h5] = await page.$x("//h5[text()='Рейтинг']");
+            await h5.evaluate(el => el.scrollIntoView());
+            let elementHandle = await page.$("#player-iframe");
 
-        elementHandle = await page.$("#player-iframe");
-        console.log("frame found");
-        frame = await elementHandle.contentFrame();
-        await frame.waitForSelector(".serial-panel");
-        let episodes = await frame.$$(".serial-series-box > .dropdown > .dropdown-content > div");
+            console.log("frame found");
+            let frame = await elementHandle.contentFrame();
+            console.log("waiting for selector");
+            await frame.waitForSelector(".serial-panel");
+            await frame.click("body > .main-box > .serial-panel > .serial-translations-box > .select-button")
+            console.log("clicked");
+            if (dubName.includes("SUB")) {
+                const newelement = dubName.replace("SUB", "");
+                console.log(`//div[span[text()='${dubName}'] and span[text()='SUB']]`)
+                const [el] = await frame.$x(`//div[span[text()='${newelement}'] and span[text()='SUB']]`);
+                await Promise.all([
+                    el.click(),
+                    frame.waitForNavigation({
+                        waitUntil: 'load'
+                    }),
+                ]);
+            } else {
+                console.log(`//div[span[text()='${dubName}']]`)
+                const [el] = await frame.$x(`//div[span[text()='${dubName}']]`);
+                await Promise.all([
+                    el.click(),
+                    frame.waitForNavigation({
+                        waitUntil: 'load'
+                    }),
+                ]);
+            }
+            elementHandle = await page.$("#player-iframe");
+            console.log("frame found");
+            frame = await elementHandle.contentFrame();
+            await frame.waitForSelector(".serial-panel");
+            let episodes = await frame.$$(".serial-series-box > .dropdown > .dropdown-content > div");
+            dubs[i].hasNewEpisodes = dub.episodes < episodes.length;
+            dubs[i].newEpisodeNum = episodes.length;
+        }
+
         page.close();
-        return episodes.length;
+        return dubs;
     }
 
     async getDubs() {
@@ -242,13 +261,6 @@ export default class WebScraper {
                 dubName: dubsArray[i],
                 episodes: episodes.length,
             });
-            dubs = await frame.$$(".serial-translations-box > .dropdown > .dropdown-content > div");
-            dubsArray = [];
-            for (let i = 0; i < dubs.length; i++) {
-                const element = dubs[i];
-                let value = await element.evaluate(el => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
-                dubsArray.push(value);
-            }
         }
 
         page.close();

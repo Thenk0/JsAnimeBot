@@ -20,7 +20,7 @@ export default class AnimeDB {
             currentEpisodes: animeObj.episodes_aired,
             follow: 0,
             animeName: animeObj.russian,
-            animeImage: animeObj.original
+            animeImage: animeObj.image.original
         };
         this.cachedAnime.push(newanimeObj);
         this.dbAnimeIDs.push(animeObj.id);
@@ -104,6 +104,15 @@ export default class AnimeDB {
         return this.dbAnimeIDs.includes(animeID);
     }
 
+    testepisodechange() {
+        sqlite.connect(this.dbName);
+        sqlite.run(`UPDATE dubNames_animeFollows
+                    SET episodes=10
+                    WHERE animeFollowID=44516 AND dubNameID=1`);
+        this.cachedFollows[0].dubs[0].episodes = 10;
+        sqlite.close();
+    }
+
     isDubInDB(dubName) {
         sqlite.connect(this.dbName);
         let result = sqlite.run("SELECT * FROM dubNames WHERE dubName=?", [dubName]);
@@ -119,6 +128,31 @@ export default class AnimeDB {
             }
         }
         return false;
+    }
+
+    updateEpisodes(animeObj) {
+        for (let i = 0; i < animeObj.dubs.length; i++) {
+            const element = animeObj.dubs[i];
+            const newEpisodeNum = element.newEpisodeNum;
+            animeObj.dubs[i].episodes = element.newEpisodeNum;
+            const dubID = this.getDubIDByName(element.dubName);
+            sqlite.connect(this.dbName);
+            console.log(newEpisodeNum, dubID, element.animeID);
+            sqlite.run("UPDATE dubNames_animeFollows SET episodes=? WHERE dubNameID=? AND animeFollowID=?", [newEpisodeNum, dubID, animeObj.animeID]);
+            sqlite.close();
+            delete animeObj.dubs[i].newEpisodeNum;
+            delete animeObj.dubs[i].hasNewEpisodes;
+            animeObj.dubs[i].checkNewEpisodes = false;
+        }
+    }
+
+    getDubIDByName(dubName) {
+        for (let i = 0; i < this.cachedDubNames.length; i++) {
+            const element = this.cachedDubNames[i];
+            if (element.dubName == dubName) {
+                return element.id;
+            }
+        }
     }
 
     getCachedAnimeFromDB() {
@@ -181,6 +215,7 @@ export default class AnimeDB {
                     episodes: tableInfoElement.episodes,
                     checkNewEpisodes: false
                 });
+                follows[i].checkNewEpisodes = false;
             }
         }
         sqlite.close();
@@ -197,7 +232,6 @@ export default class AnimeDB {
         return {};
     }
 
-    // TODO: Rewrite to new db
     setFollow(animeID, dubObj, animeURL, currentEpisodes) {
         animeID = parseInt(animeID);
         for (let i = 0; i < this.cachedAnime.length; i++) {
@@ -219,20 +253,23 @@ export default class AnimeDB {
             this.cachedAnime[i].follow = 1;
             this.cachedAnime[i].animeURL = animeURL;
             const animeObj = this.cachedAnime[i];
+            console.log(animeObj);
             this.cachedFollows.push({
-                animeID: animeObj.id,
+                animeID: animeObj.animeID,
                 animeURL: animeObj.animeURL,
-                maxEpisodes: animeObj.episodes,
-                currentEpisodes: animeObj.episodes_aired,
+                maxEpisodes: animeObj.maxEpisodes,
+                currentEpisodes: animeObj.currentEpisodes,
                 follow: 1,
-                animeName: animeObj.russian,
-                animeImage: animeObj.original,
+                animeName: animeObj.animeName,
+                animeImage: animeObj.animeImage,
+                checkNewEpisodes: false,
                 dubs: [{
                     dubName: dubObj.dubName,
                     episodes: currentEpisodes,
                     checkNewEpisodes: false
-                }]
+                }],
             });
+            console.log("followed successfuly")
             return;
         }
     }

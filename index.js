@@ -1,20 +1,18 @@
 import AnimeDB from "./shikimoriapi/animedb.js";
 import ShikimoriApi from "./shikimoriapi/shikimoriapi.js";
-import Discord, {
-    MessageAttachment
-} from "discord.js";
 import Config from "./config.js";
 import WebScraper from "./webscraper/webscraper.js";
+import Discord from "discord.js";
 
 const shikimoriApi = new ShikimoriApi();
 const animeDB = new AnimeDB();
-console.log(animeDB.cachedFollows);
-console.log(animeDB.cachedFollows[0].dubs);
 const client = new Discord.Client({
     intents: ["GUILDS", "GUILD_MESSAGES"]
 });
-const webScraper = new WebScraper();
-webScraper.initialize();
+const webScraperDiscord = new WebScraper();
+webScraperDiscord.initialize();
+const webScraperChecker = new WebScraper();
+webScraperChecker.initialize();
 client.login(Config.BOT_TOKEN);
 const prefix = "!";
 
@@ -26,11 +24,23 @@ function delay(time) {
 let followProcess = false;
 let dubPick = false;
 let animeFollowObj = {};
+let infoChannel = {};
+let commandChannel = {};
+client.on("ready", async function () {
+    console.log("Bot is ready");
+    infoChannel = client.channels.cache.get(Config.INFO_CHANNEL_ID);
+    commandChannel = client.channels.cache.get(Config.COMMAND_CHANNEL_ID);
+    checkShikimoriWatchList().catch((err) => {
+        console.log(err);
+    });
+});
+
+let checkID = 0;
 
 client.on("messageCreate", function (message) {
     if (message.author.bot) return;
     if (!message.content.startsWith(prefix)) return;
-    if (message.channel.id !== '961206591946907668') return;
+    if (message.channel.id !== Config.COMMAND_CHANNEL_ID) return;
 
     const commandBody = message.content.slice(prefix.length);
     const args = commandBody.split(' ');
@@ -49,10 +59,25 @@ client.on("messageCreate", function (message) {
     if (command === "lmoa") {
         message.reply(`https://media.rawg.io/media/resize/1280/-/screenshots/fa0/fa09b6849a915df4f9e01086b6f9f9d3.jpg`);
     }
-    
+
     // Commands
     if (command === "forceupdate") {
-        message.reply(`Exception: Not implemented`);
+        if (checkID == 0) {
+            message.reply(`Проверка еще не запущена`);
+            return;
+        }
+        clearInterval(checkID);
+        (async () => {
+            await checkShikimoriWatchList().catch((err) => {
+                console.log(err);
+            });
+            checkID = setInterval(() => {
+                checkShikimoriWatchList().catch((err) => {
+                    console.log(err);
+                });
+            }, 36000000);
+            message.reply("Проверка проведена, таймер перезапущен");
+        })();
     }
     if (command === "follow") {
         if (args.length < 1) {
@@ -73,7 +98,7 @@ client.on("messageCreate", function (message) {
             const id = args[0];
             animeFollowObj.id = id;
             animeFollowObj.url = id;
-            let info = await webScraper.getAnimeInfoByID(id);
+            let info = await webScraperDiscord.getAnimeInfoByID(id);
             if (info == 404) {
                 message.reply(`404, ничего не найдено`);
                 return;
@@ -118,7 +143,7 @@ client.on("messageCreate", function (message) {
             (async () => {
                 dubPick = true;
                 const timeBefore = Date.now();
-                let dubs = await webScraper.getDubEpisodes(animeFollowObj.url);
+                let dubs = await webScraperDiscord.getDubEpisodes(animeFollowObj.url);
                 if (dubs == 404) {
                     message.reply(`404, страница не найдена`);
                     return;
@@ -152,7 +177,7 @@ client.on("messageCreate", function (message) {
             const timeBefore = Date.now();
             const id = args[0];
             animeFollowObj.url = id;
-            let info = await webScraper.getAnimeInfoByID(id);
+            let info = await webScraperwebScraperDiscord.getAnimeInfoByID(id);
             if (info == 404) {
                 message.reply(`404, ничего не найдено`);
                 return;
@@ -174,6 +199,11 @@ client.on("messageCreate", function (message) {
         message.reply(`Процесс follow успешно остановлен`);
     }
 
+    if (command === "breakfollow") {
+        animeDB.testepisodechange();
+        message.reply("mf is broken");
+    }
+
     if (command === "unfollow") {
         message.reply(`Exception: Not implemented`);
     }
@@ -186,13 +216,29 @@ client.on("messageCreate", function (message) {
             message.reply("Список пуст");
             return;
         }
-        message.reply(follows);
+        message.reply("Exception: im lazy to serialize this array");
     }
     if (command === "changedub") {
         message.reply(`Exception: Not implemented`);
     }
     if (command === "help") {
-        message.reply(`Exception: Not implemented`);
+        message.reply(
+            '```css\n' +
+            '!forceUpdate - Останавливает проверку по времени и запускает её снова\n\n' +
+            '!getlist - Выводит список аниме и ID на шикимори [Not implemented]\n\n' +
+            '!follow <ID> - Запускает процесс Follow, принимает как параметр <ID> аниме на шикимори.\n' +
+            '\tВо время процесса Follow, все остальные команды заблокированы\n\n' +
+            '!changeurl <ID> <URL> - Изменяет URL аниме на aniu для выбранного тайтла [Not Implemented]\n' +
+            '\t!changeurl <URL> - В процессе follow изменяет URL аниме на aniu\n\n' +
+            '!confirm - Подтвердить действие\n \tВ процессе follow принимает параметр <n> чтобы выбрать озвучку \n\n' +
+            '!abort - Останавливает процесс follow\n\n' +
+            '!unfollow <ID> - Выдает список озвучек отслеживаемых для этого тайтла и позволяет отписаться от них [Not Implemented]\n\n' +
+            '!getfollows - Выдает список отслеживаемых тайтлов и озвучек [Not Implemented]\n\n' +
+            '!getdub <ID> - Выдает список озвучек для тайтла [Not Implemented]\n\n' +
+            '!changedub <URL> - Позволяет изменить озвучку для тайтла [Not Implemented]\n\n' +
+            '!help - Выводит это сообщение' +
+            '```'
+        );
     }
 });
 
@@ -200,22 +246,76 @@ async function checkShikimoriWatchList() {
     console.log("Checking...")
     let animes = [];
     animes = await shikimoriApi.getAnimeWatchList();
-
+    let suppressNotifications = false;
+    if (animeDB.cachedAnime.length < 1) {
+        suppressNotifications = true;
+    }
     for (let i = 0; i < animes.data.length; i++) {
         const anime = animes.data[i];
         if (!animeDB.isAnimeInDBCached(anime.target_id)) {
             await delay(1000 / 5);
             let animebyID = await shikimoriApi.getAnimeById(anime.target_id);
             animeDB.writeAnimeToDB(animebyID.data);
+            if (!suppressNotifications) {
+                commandChannel.send(`Новое аниме найдено!\nНазвание:${animebyID.data.russian}\nID: ${animebyID.data.id}\nhttps://shikimori.one${animebyID.data.image.original}`);
+            }
             console.log(`Found new anime: ${animebyID.data.russian}`);
         }
     }
+    for (let i = 0; i < animeDB.cachedFollows.length; i++) {
+        const a = animeDB.cachedFollows[i];
+        if (!a.follow) {
+            continue;
+        }
+        let animebyID = await shikimoriApi.getAnimeById(a.animeID);
+        animebyID = animebyID.data;
+        for (let j = 0; j < a.dubs.length; j++) {
+            const dub = a.dubs[j];
+            animeDB.cachedFollows[i].dubs[j].checkNewEpisodes = false;
+            animeDB.cachedFollows[i].checkNewEpisodes = false;
+            if (dub.episodes < animebyID.episodes_aired) {
+                animeDB.cachedFollows[i].dubs[j].checkNewEpisodes = true;
+                animeDB.cachedFollows[i].checkNewEpisodes = true;
+            }
+        }
+    }
+    await checkNewFollowedEpisodes();
     console.log("Check finished. Waiting...");
 }
+checkID = setInterval(() => {
+    checkShikimoriWatchList().catch((err) => {
+        console.log(err);
+    });
+}, 36000000);
 
-checkShikimoriWatchList().catch((err) => {
-    console.log(err);
-});
+async function checkNewFollowedEpisodes() {
+    for (let i = 0; i < animeDB.cachedFollows.length; i++) {
+        const anime = animeDB.cachedFollows[i];
+        console.log(anime);
+        if (!anime.checkNewEpisodes) {
+            continue;
+        }
+        const checkDubs = [];
+        for (let j = 0; j < anime.dubs.length; j++) {
+            const element = anime.dubs[j];
+            if (!element.checkNewEpisodes) {
+                continue;
+            }
+            checkDubs.push(element);
+        }
+        const checkResult = await webScraperChecker.getEpisodes(anime.animeURL, checkDubs);
+        for (let j = 0; j < checkResult.length; j++) {
+            const element = checkResult[j];
+            console.log(element);
+            if (element.hasNewEpisodes === true) {
+                infoChannel.send(`<@&${Config.INFO_ROLE_ID}> Вышла новая серия! \nДля аниме ${anime.animeName} вышла ${element.newEpisodeNum} серия в озвучке ${element.dubName} \nhttps://shikimori.one${anime.animeImage}`)
+                animeDB.updateEpisodes(anime);
+            }
+        }
+    }
+    return 0;
+}
+
 
 
 // setInterval(() => {

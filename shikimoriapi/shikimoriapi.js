@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import Config from "../config.js";
 export default class ShikimoriApi {
     constructor() {
         this.baseUrl = 'https://shikimori.one/api/';
@@ -9,10 +9,10 @@ export default class ShikimoriApi {
         let watchList = {};
         return axios.get(`${this.baseUrl}v2/user_rates`, {
             headers: {
-                'User-Agent': 'JsAnimeBot',
+                'User-Agent': Config.SKIKIMORI_APP,
             },
             params: {
-                "user_id": 946450,
+                "user_id": Config.SHIKIMORI_ID,
                 "target_type": "Anime",
                 "status": "watching",
             }
@@ -22,7 +22,7 @@ export default class ShikimoriApi {
     getAnimeById(id) {
         return axios.get(`${this.baseUrl}animes/${id}`, {
             headers: {
-                'User-Agent': 'JsAnimeBot',
+                'User-Agent': Config.SKIKIMORI_APP,
             },
         });
 
