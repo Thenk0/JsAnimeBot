@@ -1,8 +1,8 @@
-import AnimeDB from "./shikimoriapi/animedb.js";
-import ShikimoriApi from "./shikimoriapi/shikimoriapi.js";
-import Config from "./config.js";
-import WebScraper from "./webscraper/webscraper.js";
-import Discord from "discord.js";
+const AnimeDB = require("./shikimoriapi/animedb");
+const ShikimoriApi = require("./shikimoriapi/shikimoriapi");
+const Config = require("./config");
+const WebScraper = require("./webscraper/webscraper");
+const Discord = require("discord.js");
 
 const shikimoriApi = new ShikimoriApi();
 const animeDB = new AnimeDB();
@@ -10,8 +10,8 @@ const client = new Discord.Client({
     intents: ["GUILDS", "GUILD_MESSAGES"]
 });
 const webScraperDiscord = new WebScraper();
-webScraperDiscord.initialize();
 const webScraperChecker = new WebScraper();
+webScraperDiscord.initialize();
 webScraperChecker.initialize();
 client.login(Config.BOT_TOKEN);
 const prefix = "!";
@@ -75,7 +75,7 @@ client.on("messageCreate", function (message) {
                 checkShikimoriWatchList().catch((err) => {
                     console.log(err);
                 });
-            }, 36000000);
+            }, 3600000);
             message.reply("Проверка проведена, таймер перезапущен");
         })();
     }
@@ -131,6 +131,10 @@ client.on("messageCreate", function (message) {
             console.log(animeFollowObj.id, dub, animeFollowObj.url, dubObj.episodes);
             animeDB.setFollow(animeFollowObj.id, dub, animeFollowObj.url, dubObj.episodes);
             message.reply(`Вы выбрали озвучку ${dubObj.dubName}`);
+            followProcess = false;
+            dubPick = false;
+            animeFollowObj = {};
+            return;
         }
 
         if (!dubPick && args.length !== 0) {
@@ -273,6 +277,7 @@ async function checkShikimoriWatchList() {
             const dub = a.dubs[j];
             animeDB.cachedFollows[i].dubs[j].checkNewEpisodes = false;
             animeDB.cachedFollows[i].checkNewEpisodes = false;
+            console.log(dub.episodes, animebyID.episodes_aired);
             if (dub.episodes < animebyID.episodes_aired) {
                 animeDB.cachedFollows[i].dubs[j].checkNewEpisodes = true;
                 animeDB.cachedFollows[i].checkNewEpisodes = true;
@@ -286,7 +291,7 @@ checkID = setInterval(() => {
     checkShikimoriWatchList().catch((err) => {
         console.log(err);
     });
-}, 36000000);
+}, 3600000);
 
 async function checkNewFollowedEpisodes() {
     for (let i = 0; i < animeDB.cachedFollows.length; i++) {
@@ -315,11 +320,3 @@ async function checkNewFollowedEpisodes() {
     }
     return 0;
 }
-
-
-
-// setInterval(() => {
-//     checkShikimoriWatchList().catch((err) => {
-//         console.log(err);
-//     });
-// }, 40000);

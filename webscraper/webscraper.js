@@ -1,11 +1,11 @@
-import puppeteer from "puppeteer";
+const puppeteer = require("puppeteer");
 
 function delay(time) {
     return new Promise(function (resolve) {
         setTimeout(resolve, time)
     });
 }
-export default class WebScraper {
+class WebScraper {
     async initialize() {
         this.browser = await puppeteer.launch({
             headless: true,
@@ -317,3 +317,5 @@ export default class WebScraper {
         };
     }
 }
+
+module.exports = WebScraper;

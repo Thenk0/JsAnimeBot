@@ -1,6 +1,6 @@
-import axios from "axios";
-import Config from "../config.js";
-export default class ShikimoriApi {
+const axios = require("axios");
+const Config = require("../config");
+class ShikimoriApi {
     constructor() {
         this.baseUrl = 'https://shikimori.one/api/';
     }
@@ -28,3 +28,5 @@ export default class ShikimoriApi {
 
     }
 }
+
+module.exports = ShikimoriApi;

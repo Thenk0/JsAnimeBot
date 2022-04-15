@@ -1,4 +1,4 @@
-export default class Config {
+class Config {
     static BOT_TOKEN = "INSERT TOKEN";
     static INFO_CHANNEL_ID = "INSERT ID";
     static COMMAND_CHANNEL_ID = "INSERT ID";
@@ -6,3 +6,4 @@ export default class Config {
     static SKIKIMORI_APP = "INSERT APP NAME";
     static INFO_ROLE_ID = "INSERT ROLE ID";
 }
+module.exports = Config;

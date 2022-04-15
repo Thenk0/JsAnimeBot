@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "scrapes shikimori for info, compares it, then looks for updates in another website using a headless browser",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

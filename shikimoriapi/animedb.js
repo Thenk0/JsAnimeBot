@@ -1,7 +1,5 @@
-import sqlite from "sqlite-sync";
-
-
-export default class AnimeDB {
+const sqlite = require("sqlite-sync");
+class AnimeDB {
     constructor() {
         this.cachedAnime = [];
         this.dbName = "animeDB.sqlite";
@@ -298,3 +296,5 @@ export default class AnimeDB {
         }
     }
 }
+
+module.exports = AnimeDB;
