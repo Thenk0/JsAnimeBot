@@ -81,6 +81,7 @@ async function checkShikimoriWatchList() {
         if (animeDB.isAnimeInDBCached(anime.target_id)) continue;
         let animebyID = {};
         try {
+            delay(1000 / 5);
             animebyID = await shikimoriApi.getAnimeById(anime.target_id);
         } catch (error) {
             console.warn(chalk.bold.redBright(`${Embeds.formatedDate()}: Shikimori) AnimeByID request has failed. Additional info can be found in error.log`));
@@ -108,6 +109,7 @@ async function checkShikimoriWatchList() {
         let animebyID = {};
         try {
             console.log(chalk.cyan(`${Embeds.formatedDate()}: AutoCheck) Checking anime id ${a.animeID}`));
+            delay(1000 / 5);
             animebyID = await shikimoriApi.getAnimeById(a.animeID);
         } catch (error) {
             console.error(chalk.bold.redBright(`${Embeds.formatedDate()}: Shikimori) AnimeByID request has failed. Additional info can be found in error.log`));
@@ -157,12 +159,12 @@ async function checkNewFollowedEpisodes() {
         } catch (error) {
             await webScraperChecker.reinitialize();
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Episode check has failed! Skipping check. For more information check error.log`));
-            fs.appendFileSync(dir+"/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Episode check has failed!; ${error}\n`);
+            fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Episode check has failed!; ${error}\n`);
             continue;
         }
         if (checkResult == 404) {
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Anime url has changed for ${anime.animeURL}`));
-            fs.appendFileSync(dir+"/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Anime url has changed for ${anime.animeURL}\n`);
+            fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Anime url has changed for ${anime.animeURL}\n`);
             return;
         }
         for (let j = 0; j < checkResult.length; j++) {
