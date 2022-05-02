@@ -109,7 +109,7 @@ async function checkShikimoriWatchList() {
         let animebyID = {};
         try {
             console.log(chalk.cyan(`${Embeds.formatedDate()}: AutoCheck) Checking anime id ${a.animeID}`));
-            delay(1000 / 5);
+            await delay(1000 / 5);
             animebyID = await shikimoriApi.getAnimeById(a.animeID);
         } catch (error) {
             console.error(chalk.bold.redBright(`${Embeds.formatedDate()}: Shikimori) AnimeByID request has failed. Additional info can be found in error.log`));
