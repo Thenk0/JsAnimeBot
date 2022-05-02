@@ -1,4 +1,7 @@
 const sqlite = require("sqlite-sync");
+const chalk = require("chalk");
+const Embeds = require("../bot/embeds");
+
 class AnimeDB {
     constructor() {
         this.cachedAnime = [];
@@ -11,13 +14,18 @@ class AnimeDB {
     }
 
     writeAnimeToDB(animeObj) {
+        // fix for non existant russian name
+        let titleName = animeObj.russian;
+        if (titleName == "") {
+            titleName = animeObj.name;
+        }
         let newanimeObj = {
             animeID: animeObj.id,
             animeURL: null,
             maxEpisodes: animeObj.episodes,
             currentEpisodes: animeObj.episodes_aired,
             follow: 0,
-            animeName: animeObj.russian,
+            animeName: titleName, 
             animeImage: animeObj.image.original
         };
         this.cachedAnime.push(newanimeObj);
@@ -32,7 +40,7 @@ class AnimeDB {
                 follow,
                 animeName,
                 animeImage)
-            VALUES(?, NULL, ?, ?, 0, ?, ?);`, [animeObj.id, animeObj.episodes, animeObj.episodes_aired, animeObj.russian, animeObj.image.original]);
+            VALUES(?, NULL, ?, ?, 0, ?, ?);`, [animeObj.id, animeObj.episodes, animeObj.episodes_aired, titleName, animeObj.image.original]);
         sqlite.close();
     }
 
@@ -95,9 +103,9 @@ class AnimeDB {
         sqlite.connect(this.dbName);
         let result = sqlite.run("SELECT * FROM animeFollows WHERE animeID=?", [animeID]);
         sqlite.close();
-        console.log(result);
         return result.length > 0;
     }
+
     isAnimeInDBCached(animeID) {
         return this.dbAnimeIDs.includes(animeID);
     }
@@ -105,9 +113,8 @@ class AnimeDB {
     testepisodechange() {
         sqlite.connect(this.dbName);
         sqlite.run(`UPDATE dubNames_animeFollows
-                    SET episodes=10
-                    WHERE animeFollowID=44516 AND dubNameID=1`);
-        this.cachedFollows[0].dubs[0].episodes = 10;
+                    SET episodes=2
+                    WHERE animeFollowID=43608 AND dubNameID=11`);
         sqlite.close();
     }
 
@@ -121,9 +128,17 @@ class AnimeDB {
     isDubInDBCached(dubName) {
         for (let i = 0; i < this.cachedDubNames.length; i++) {
             const dub = this.cachedDubNames[i];
-            if (dub.dubName == dubName) {
-                return true;
-            }
+            if (dub.dubName == dubName) return true;
+        }
+        return false;
+    }
+
+    isSubbed(dubObj, animeID) {
+        const animeObj = this.getFollowedAnimeCached(animeID);
+        if (typeof animeObj == "undefined") return false;
+        for (let i = 0; i < animeObj.dubs.length; i++) {
+            const dub = animeObj.dubs[i];
+            if (dub.dubName == dubObj.dubName) return true;
         }
         return false;
     }
@@ -131,11 +146,14 @@ class AnimeDB {
     updateEpisodes(animeObj) {
         for (let i = 0; i < animeObj.dubs.length; i++) {
             const element = animeObj.dubs[i];
+            if (element.hasNewEpisodes === false || typeof element.hasNewEpisodes === "undefined") {
+                continue;
+            }
             const newEpisodeNum = element.newEpisodeNum;
             animeObj.dubs[i].episodes = element.newEpisodeNum;
             const dubID = this.getDubIDByName(element.dubName);
             sqlite.connect(this.dbName);
-            console.log(newEpisodeNum, dubID, element.animeID);
+            // console new episode
             sqlite.run("UPDATE dubNames_animeFollows SET episodes=? WHERE dubNameID=? AND animeFollowID=?", [newEpisodeNum, dubID, animeObj.animeID]);
             sqlite.close();
             delete animeObj.dubs[i].newEpisodeNum;
@@ -144,12 +162,19 @@ class AnimeDB {
         }
     }
 
+    updateEpisode(anime, shikiObj) {
+        anime.currentEpisodes = shikiObj.episodes_aired;
+        anime.maxEpisodes = shikiObj.episodes;
+        sqlite.connect(this.dbName);
+        console.log(chalk.blue(`${Embeds.formatedDate()}: AnimeDB) \t${anime.animeName} episodes updated`));
+        sqlite.run("UPDATE animeFollows SET currentEpisodes=?, maxEpisodes=? WHERE animeID=?", [anime.currentEpisodes, anime.maxEpisodes, anime.animeID]);
+        sqlite.close();
+    }
+
     getDubIDByName(dubName) {
         for (let i = 0; i < this.cachedDubNames.length; i++) {
             const element = this.cachedDubNames[i];
-            if (element.dubName == dubName) {
-                return element.id;
-            }
+            if (element.dubName == dubName) return element.id;
         }
     }
 
@@ -177,16 +202,15 @@ class AnimeDB {
 
     cacheDubs(dubs) {
         dubs.forEach(element => {
-            if (!this.isDubInDBCached(element.dubName)) {
-                sqlite.connect(this.dbName);
-                const id = sqlite.run(`INSERT INTO dubNames(dubName) VALUES (?)`, [element.dubName]);
-                console.log(`Found new dub ${element.dubName}`);
-                this.cachedDubNames.push({
-                    id: id,
-                    dubName: element.dubName,
-                });
-                sqlite.close();
-            }
+            if (this.isDubInDBCached(element.dubName)) return;
+            sqlite.connect(this.dbName);
+            const id = sqlite.run(`INSERT INTO dubNames(dubName) VALUES (?)`, [element.dubName]);
+            console.log(chalk.blue(`${Embeds.formatedDate()}: AnimeDB) Found new dub ${element.dubName}`));
+            this.cachedDubNames.push({
+                id: id,
+                dubName: element.dubName,
+            });
+            sqlite.close();
         });
     }
 
@@ -223,77 +247,132 @@ class AnimeDB {
     getDubCached(dubName) {
         for (let i = 0; i < this.cachedDubNames.length; i++) {
             const dub = this.cachedDubNames[i];
-            if (dub.dubName === dubName) {
-                return dub;
-            }
+            if (dub.dubName === dubName) return dub;
         }
         return {};
+    }
+
+    getAnimeCached(id) {
+        return this.cachedAnime.find((value) => {
+            return value.animeID == id;
+        });
+    }
+    getFollowedAnimeCached(id) {
+        return this.cachedFollows.find((value) => {
+            return value.animeID == id;
+        });
     }
 
     setFollow(animeID, dubObj, animeURL, currentEpisodes) {
         animeID = parseInt(animeID);
         for (let i = 0; i < this.cachedAnime.length; i++) {
-            const element = this.cachedAnime[i];
-            if (element.animeID !== animeID) {
-                continue;
-            }
-            if (!this.isAnimeInDB(animeID)) {
-                continue;
-            }
+            const animeObj = this.cachedAnime[i];
+            if (animeObj.animeID !== animeID) continue;
+            if (!this.isAnimeInDB(animeID)) continue;
             sqlite.connect(this.dbName);
-            const test = sqlite.run(
+            sqlite.run(
                 `UPDATE animeFollows
                  SET follow = 1, animeURL = ?
                  WHERE animeID = ?`, [animeURL, animeID]
             );
             const id = sqlite.run(`INSERT INTO dubNames_animeFollows(animeFollowID, dubNameID, episodes) VALUES(?,?,?)`, [animeID, dubObj.id, currentEpisodes]);
             sqlite.close();
-            this.cachedAnime[i].follow = 1;
-            this.cachedAnime[i].animeURL = animeURL;
-            const animeObj = this.cachedAnime[i];
+            animeObj.follow = 1;
+            animeObj.animeURL = animeURL;
             console.log(animeObj);
-            this.cachedFollows.push({
-                animeID: animeObj.animeID,
-                animeURL: animeObj.animeURL,
-                maxEpisodes: animeObj.maxEpisodes,
-                currentEpisodes: animeObj.currentEpisodes,
-                follow: 1,
-                animeName: animeObj.animeName,
-                animeImage: animeObj.animeImage,
-                checkNewEpisodes: false,
-                dubs: [{
-                    dubName: dubObj.dubName,
-                    episodes: currentEpisodes,
-                    checkNewEpisodes: false
-                }],
+            const followedAnime = this.getFollowedAnimeCached(animeID);
+            if (typeof followedAnime == "undefined") {
+                this.cachedFollows.push({
+                    id: id,
+                    animeID: animeObj.animeID,
+                    animeURL: animeObj.animeURL,
+                    maxEpisodes: animeObj.maxEpisodes,
+                    currentEpisodes: animeObj.currentEpisodes,
+                    follow: 1,
+                    animeName: animeObj.animeName,
+                    animeImage: animeObj.animeImage,
+                    checkNewEpisodes: false,
+                    dubs: [{
+                        dubName: dubObj.dubName,
+                        episodes: currentEpisodes,
+                        checkNewEpisodes: false
+                    }],
+                });
+                console.log("followed successfuly")
+                return;
+            }
+            followedAnime.dubs.push({
+                dubName: dubObj.dubName,
+                episodes: currentEpisodes,
+                checkNewEpisodes: false
             });
-            console.log("followed successfuly")
             return;
         }
     }
     // TODO: Rewrite to new db
     unfollow(animeID) {
-        for (let i = 0; i < this.cachedAnime.length; i++) {
-            const element = this.cachedAnime[i];
-            if (element.animeID !== animeID) {
-                continue;
-            }
-            if (!this.isAnimeInDB(element.animeID)) {
-                continue;
-            }
-            sqlite.run(
+        for (let i = 0; i < this.cachedFollows.length; i++) {
+            const animeObj = this.cachedFollows[i];
+            if (animeObj.animeID !== animeID) continue;
+            if (!this.isAnimeInDB(animeID)) continue;
+            sqlite.connect(this.dbName);
+            const test = sqlite.run(
                 `UPDATE animeFollows
-                 SET follow = 1, dubName = NULL, animeURL = NULL
+                 SET follow = 0, animeURL=NULL
                  WHERE animeID = ?`, [animeID],
                 function (res) {
                     if (res.error)
                         throw res.error;
                 }
             );
-            this.cachedAnime[i].follow = 0;
-            this.cachedAnime[i].animeURL = null;
-            this.cachedAnime[i].dubName = null;
+            const animeCachedObj = this.getAnimeCached(animeID);
+            animeCachedObj.follow = 0;
+            animeCachedObj.animeURL = null;
+            sqlite.run(
+                `DELETE FROM dubNames_animeFollows
+                WHERE animeFollowID=?`, [animeID]
+            )
+            sqlite.close();
+            this.cachedFollows.splice(i, 1);
+            return;
         }
+    }
+
+    unfollowDub(animeID, dubName) {
+        const dubID = this.getDubIDByName(dubName);
+        for (let i = 0; i < this.cachedFollows.length; i++) {
+            const animeObj = this.cachedFollows[i];
+            if (animeObj.animeID !== animeID) continue;
+            if (!this.isAnimeInDB(animeID)) continue;
+            sqlite.connect(this.dbName);
+            sqlite.run(
+                `DELETE FROM dubNames_animeFollows
+                WHERE animeFollowID=? AND dubNameID=?`, [animeID, dubID]
+            )
+            sqlite.close();
+            for (let j = 0; j < animeObj.dubs.length; j++) {
+                const element = animeObj.dubs[j];
+                if (element.dubName != dubName) continue;
+                this.cachedFollows[i].dubs.splice(j, 1);
+                return;
+            }
+        }
+    }
+
+    removeAnimeArray(ids) {
+        ids.forEach((id, i) => {
+            const anime = this.getAnimeCached(id);
+            if (typeof anime === "undefined") return;
+            if (anime.follow) this.unfollow(anime.animeID);
+            sqlite.connect(this.dbName);
+            sqlite.run(
+                `DELETE FROM animeFollows
+                WHERE animeID=?`, [id]
+            );
+            sqlite.close();
+            console.log(chalk.blue(`${Embeds.formatedDate()}: AnimeDB) ${anime.animeName} was removed`));
+            this.cachedAnime.splice(i, 1);
+        });
     }
 }
 

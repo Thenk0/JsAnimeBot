@@ -6,7 +6,6 @@ class ShikimoriApi {
     }
 
     getAnimeWatchList() {
-        let watchList = {};
         return axios.get(`${this.baseUrl}v2/user_rates`, {
             headers: {
                 'User-Agent': Config.SKIKIMORI_APP,
