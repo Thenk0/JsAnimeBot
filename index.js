@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const AnimeDB = require("./shikimoriapi/animedb");
 const ShikimoriApi = require("./shikimoriapi/shikimoriapi");
 const Config = require("./config");
@@ -82,7 +83,7 @@ async function checkShikimoriWatchList() {
         if (animeDB.isAnimeInDBCached(anime.target_id)) continue;
         let animebyID = {};
         try {
-            delay(1000 / 5);
+            await delay(1000 / 5);
             animebyID = await shikimoriApi.getAnimeById(anime.target_id);
         } catch (error) {
             console.warn(chalk.bold.redBright(`${Embeds.formatedDate()}: Shikimori) AnimeByID request has failed. Additional info can be found in error.log`));
