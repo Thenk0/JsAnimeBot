@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 const AnimeDB = require("./shikimoriapi/animedb");
 const ShikimoriApi = require("./shikimoriapi/shikimoriapi");
 const Config = require("./config");
