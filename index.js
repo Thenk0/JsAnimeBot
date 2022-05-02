@@ -17,6 +17,7 @@ switch (opsys) {
         break;
     case "linux":
         dir = "/var/log";
+        break;
     default:
         dir = "./logs";
         break;
