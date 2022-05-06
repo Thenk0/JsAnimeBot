@@ -89,23 +89,31 @@ class Embeds {
     }
 
     static list(animes) {
-        const embed = new MessageEmbed()
-            .setColor("#DC703C")
-            .setTitle('Список "Смотрю" на шикимори')
-            .setDescription('Аниме в списке и информация о них')
-            .setTimestamp()
-            .setFooter({
-                text: "Список 'Смотрю'"
-            });
+        let arrays = [];
+        const size = 25;
+        while (animes.length > 0) arrays.push(animes.splice(0, size));
+        let embeds = [];
+        arrays.forEach((array, i) => {
+            const embed = new MessageEmbed()
+                .setColor("#DC703C")
+                .setTitle(`Список "Смотрю" на шикимори №${i+1}`)
+                .setDescription('Аниме в списке и информация о них')
+                .setTimestamp()
+                .setFooter({
+                    text: "Список 'Смотрю'"
+                });
 
-        animes.forEach(anime => {
-            let animeInfo = "```css\n";
-            animeInfo += `ID: ${anime.animeID}\n`;
-            animeInfo += `Серий: ${anime.currentEpisodes}/${anime.maxEpisodes == "0" ? "?" : anime.maxEpisodes}\n`;
-            animeInfo += "```";
-            embed.addField(anime.animeName, animeInfo);
-        });
-        return embed;
+            array.forEach(anime => {
+                let animeInfo = "```css\n";
+                animeInfo += `ID: ${anime.animeID}\n`;
+                animeInfo += `Подписка: ${anime.follow ? "Есть" : "Нет"}\n`;
+                animeInfo += `Серий: ${anime.currentEpisodes}/${anime.maxEpisodes == "0" ? "?" : anime.maxEpisodes}\n`;
+                animeInfo += "```";
+                embed.addField(anime.animeName, animeInfo);
+            });
+            embeds.push(embed);
+        })
+        return embeds;
     }
 
     static follow(animeObj) {

@@ -36,6 +36,10 @@ class WebScraper {
         await this.initialize();
     }
 
+    async close() {
+        await this.browser.close();
+    }
+
     async getEpisodes(animeURL, dubs) {
         const page = await this.browser.newPage();
         await page.setViewport({
@@ -44,6 +48,9 @@ class WebScraper {
         });
         await page.setRequestInterception(true);
         page.on("request", (request) => {
+            if (request.resourceType() === 'image' || request.resourceType() === "font") {
+                return request.abort();
+            }
             const url = request.url();
             const shouldAbort = this.filters.some(
                 (urlPart) => url.includes(urlPart)
@@ -125,6 +132,9 @@ class WebScraper {
         });
         await page.setRequestInterception(true);
         page.on("request", (request) => {
+            if (request.resourceType() === 'image' || request.resourceType() === "font") {
+                return request.abort();
+            }
             const url = request.url();
             const shouldAbort = this.filters.some(
                 (urlPart) => url.includes(urlPart)
@@ -175,6 +185,9 @@ class WebScraper {
         });
         await page.setRequestInterception(true);
         page.on("request", (request) => {
+            if (request.resourceType() === 'image' || request.resourceType() === "font") {
+                return request.abort();
+            }
             const url = request.url();
             const shouldAbort = this.filters.some(
                 (urlPart) => url.includes(urlPart)
@@ -225,7 +238,6 @@ class WebScraper {
             console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Clicked on dub ${element}`));
             if (element.includes("SUB")) {
                 const newelement = element.replace("SUB", "");
-                console.log(`//div[span[text()='${element}'] and span[text()='SUB']]`)
                 const [el] = await frame.$x(`//div[span[text()='${newelement}'] and span[text()='SUB']]`);
                 await Promise.all([
                     el.click(),
@@ -234,7 +246,6 @@ class WebScraper {
                     }),
                 ]);
             } else {
-                console.log(`//div[span[text()='${element}']]`)
                 const [el] = await frame.$x(`//div[span[text()='${element}']]`);
                 await Promise.all([
                     el.click(),
@@ -266,6 +277,9 @@ class WebScraper {
         });
         await page.setRequestInterception(true);
         page.on("request", (request) => {
+            if (request.resourceType() === 'image' || request.resourceType() === "font") {
+                return request.abort();
+            }
             const url = request.url();
             const shouldAbort = this.filters.some(
                 (urlPart) => url.includes(urlPart)

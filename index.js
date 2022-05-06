@@ -35,6 +35,25 @@ const webScraperChecker = new WebScraper();
 webScraperDiscord.initialize();
 webScraperChecker.initialize();
 
+process.on('beforeExit', () => {
+    webScraperChecker.close();
+    webScraperDiscord.close();
+});
+process.on('uncaughtException', () => {
+    webScraperChecker.close();
+    webScraperDiscord.close();
+});
+const termSignals = ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL',
+    'SIGTRAP', 'SIGABRT',
+    'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
+];
+termSignals.forEach((eventType) => {
+    process.on(eventType, () => {
+        webScraperChecker.close();
+        webScraperDiscord.close();
+    });
+});
+
 let checkID = 0;
 const bot = new Bot(webScraperDiscord, animeDB, checkShikimoriWatchList);
 let infoChannel = {};
@@ -89,6 +108,11 @@ async function checkShikimoriWatchList() {
         } catch (error) {
             console.warn(chalk.bold.redBright(`${Embeds.formatedDate()}: Shikimori) AnimeByID request has failed. Additional info can be found in error.log`));
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: Shikimori) animeByID request has failed; ${error}\n`);
+            if (typeof error.response.status == "undefined") {
+                fs.appendFileSync(dir + "/animebot_error.log", `ERROR| ${Embeds.formatedDate()}: AutoCheck) Fail was critical!\n`);
+                console.error(chalk.cyanBright(`${Embeds.formatedDate()}: AutoCheck) Fail was critical: check aborted!`));
+                return;
+            }
             if (error.response.status == "429") {
                 i--;
                 continue;
@@ -117,6 +141,11 @@ async function checkShikimoriWatchList() {
         } catch (error) {
             console.error(chalk.bold.redBright(`${Embeds.formatedDate()}: Shikimori) AnimeByID request has failed. Additional info can be found in error.log`));
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: Shikimori) animeByID request has failed; ${error}\n`);
+            if (typeof error.response.status == "undefined") {
+                fs.appendFileSync(dir + "/animebot_error.log", `ERROR| ${Embeds.formatedDate()}: AutoCheck) Fail was critical!\n`);
+                console.error(chalk.cyanBright(`${Embeds.formatedDate()}: AutoCheck) Fail was critical: check aborted!`));
+                return;
+            }
             if (error.response.status == "429") {
                 i--;
                 continue;
@@ -148,7 +177,6 @@ async function checkNewFollowedEpisodes() {
         const anime = animeDB.cachedFollows[i];
         console.log(chalk.cyan(`${Embeds.formatedDate()}: AutoCheck) Checking anime ${anime.animeName}`));
         if (!anime.checkNewEpisodes) continue;
-
         const checkDubs = [];
         for (let j = 0; j < anime.dubs.length; j++) {
             const element = anime.dubs[j];

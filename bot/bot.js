@@ -3,7 +3,8 @@ const Discord = require("discord.js");
 const Embeds = require("./embeds");
 const StringSimilarity = require("string-similarity");
 const chalk = require("chalk");
-
+const Voice = require("@discordjs/voice");
+const path = require("path");
 const fs = require('fs');
 
 const opsys = process.platform;
@@ -33,42 +34,142 @@ class Bot {
         this.webScraper = webscraper;
         this.animeDB = animeDB;
         this.client = new Discord.Client({
-            intents: ["GUILDS", "GUILD_MESSAGES"]
+            intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"]
         });
         this.client.login(Config.BOT_TOKEN);
         this.checkFunction = checkFunction;
         this.checkID = 0;
-
+        this.lock = false;
     }
 
     setCommands(client) {
         client.on("messageCreate", (message) => {
             if (message.author.bot) return;
+            if (message.channel.id === Config.GENERAL_CHANNEL_ID) {
+                if (message.content.toLowerCase().includes("го в борду")) return message.reply("Иди нахуй");
+            }
             if (!message.content.startsWith(this.prefix)) return;
-            if (message.channel.id !== Config.COMMAND_CHANNEL_ID) return;
             const commandBody = message.content.slice(this.prefix.length);
             const args = commandBody.split(' ');
             const command = args.shift().toLowerCase();
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Recieved command ${command}`));
-            this.handleCommand(args, command, message);
+            if (message.channel.id === Config.COMMAND_CHANNEL_ID) {
+                this.handleCommand(args, command, message);
+                return;
+            }
+            if (message.channel.id === Config.GENERAL_CHANNEL_ID) {
+                this.handleMemeComands(args, command, message);
+                return;
+            }
         });
+    }
+
+    handleMemeComands(args, command, message) {
+        let VC;
+        switch (command) {
+            case "augh":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                }
+                VC = message.member.voice.channel;
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "augh.mp3", 2000);
+                message.delete();
+                break;
+            case "toob":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                }
+                VC = message.member.voice.channel;
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "toob.mp3", 5250);
+                message.delete();
+                break;
+            case "super_awa":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                }
+                VC = message.member.voice.channel;
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "super_awa.mp3", 10000);
+                message.delete();
+                break;
+            case "gnome":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                }
+                VC = message.member.voice.channel;
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "gnome.mp3", 1500);
+                message.delete();
+                break;
+            case "bruh":
+                message.delete();
+                message.channel.send(`https://media.rawg.io/media/resize/1280/-/screenshots/fa0/fa09b6849a915df4f9e01086b6f9f9d3.jpg`);
+                break;
+            case "summon":
+                message.delete();
+                const user = message.guild.members.cache.find(user => user.user.username == args[0]);
+                if (typeof user === "undefined") {
+                    return message.channel.send("Пользователь не найден");
+                }
+                if (!user.roles.cache.some(role => role.name == "Jefors")) {
+                    return message.channel.send("Cannot summon unworthy");
+                }
+                user.send("https://media.discordapp.net/attachments/971320408693432320/971353905852207154/test.png?width=1202&height=676");
+                message.channel.send(`I summon thee <@${user.id}>`);
+                break;
+            default:
+                break;
+        }
     }
 
     handleCommand(args, command, message) {
         switch (command) {
-            case "getfollowedids":
-                console.log("working");
-                let idString = "";
-                let counter = 1;
-                this.animeDB.dbAnimeIDs.forEach(element => {
-                    idString = `${idString}\n${counter}): ${element}`;
-                    counter++;
+            case "awawawa":
+                if (this.lock)
+                    return message.reply({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "awawawa")]
+                    });
+                const VC = message.member.voice.channel;
+                if (!VC) return message.reply({
+                    embeds: [Embeds.error("Отправитель не в голосовом канале", "awawawa")]
                 });
-                message.reply(`${idString}\n`);
+                this.playsound(VC, "waw.mp3", 2500);
                 break;
-            case "lmoa":
-                message.reply(`https://media.rawg.io/media/resize/1280/-/screenshots/fa0/fa09b6849a915df4f9e01086b6f9f9d3.jpg`);
-                break;
+
             case "forceupdate":
                 if (this.checkID == 0) {
                     message.reply(`Проверка еще не запущена`);
@@ -143,7 +244,9 @@ class Bot {
                 }
 
                 if (!this.dubPick) {
-                    message.reply(`Запрашиваем сайт на информацию об озвучках. Пожалуйста подождите...`);
+                    message.reply({
+                        embeds: [Embeds.success(`Запрашиваем сайт на информацию об озвучках. Пожалуйста подождите...`, "confirm")]
+                    });
                     this.getAnimeInfo(message);
                     return;
                 }
@@ -179,10 +282,6 @@ class Bot {
                     return;
                 }
                 this.abort(message);
-                break;
-            case "breakfollow":
-                this.animeDB.testepisodechange();
-                message.reply("mf is broken");
                 break;
             case "unfollow":
                 if (args.length < 1) {
@@ -241,12 +340,6 @@ class Bot {
             case "help":
                 this.help(message);
                 break;
-            case "testnotification":
-                message.reply({
-                    content: `<@&${Config.INFO_ROLE_ID}>`,
-                    embeds: [Embeds.episodeNotification(this.animeDB.cachedFollows[0], this.animeDB.cachedFollows[0].dubs[0])]
-                });
-                break;
             default:
                 this.notRecognized(message, command);
                 break;
@@ -265,6 +358,7 @@ class Bot {
             "unfollow",
             "getdubs",
             "help",
+            "awawawa"
         ];
         const matches = StringSimilarity.findBestMatch(command, commands);
         if (matches.bestMatch.rating > 0.4) {
@@ -282,6 +376,36 @@ class Bot {
         });
     }
 
+    async playsound(VC, filename, quitdelay) {
+        this.lock = true;
+        const connection = Voice.joinVoiceChannel({
+            channelId: VC.id,
+            guildId: VC.guild.id,
+            adapterCreator: VC.guild.voiceAdapterCreator,
+            selfDeaf: false,
+            selfMute: false
+        });
+        const player = Voice.createAudioPlayer();
+        connection.subscribe(player);
+        player.on(Voice.AudioPlayerStatus.Playing, () => {
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${filename}`));
+        });
+        player.on("error", error => {
+            console.error(chalk.red(`${Embeds.formatedDate()}: Bot) Audio failed ${error.message}`));
+            fs.appendFileSync(dir + "/animebot_error.log", `ERROR| ${Embeds.formatedDate()}: Bot) Audio failed ${error}\n`);
+        });
+        connection.on(Voice.VoiceConnectionStatus.Ready, () => {
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Ready to play audio`));
+            const resource = Voice.createAudioResource(path.join(__dirname, "..", "audio", filename));
+            player.play(resource);
+            setTimeout(() => {
+                this.lock = false;
+                connection.destroy();
+            }, quitdelay);
+        });
+
+    }
+
     async forceUpdate(message) {
         await this.checkFunction();
         this.checkID = setInterval(() => {
@@ -293,15 +417,22 @@ class Bot {
     async follow(args, message) {
         const timeBefore = Date.now();
         const id = parseInt(args[0]);
-        if (!this.animeDB.isAnimeInDBCached(id)) {
-            message.reply({
-                embeds: [Embeds.error(`Аниме с таким [ID] не существует в бд`, `confirm ${id}`)]
-            });
-            return;
-        }
+        if (!this.animeDB.isAnimeInDBCached(id)) return message.reply({
+            embeds: [Embeds.error(`Аниме с таким [ID] не существует в бд`, `confirm ${id}`)]
+        });
         this.followProcess = true;
         this.animeFollowObj.id = id;
         this.animeFollowObj.url = id;
+        // check if was followed before
+        const followObj = this.animeDB.getFollowedAnimeCached(id);
+        if (typeof followObj !== "undefined") {
+            this.animeFollowObj.title = followObj.animeName;
+            message.reply({
+                embeds: [Embeds.success(`На аниме уже есть подписка, шаг пропущен\nЗапрашиваем сайт на информацию об озвучках. Пожалуйста подождите...`, "follow")]
+            });
+            this.getAnimeInfo(message);
+            return;
+        }
         let info;
         try {
             info = await this.webScraper.getAnimeInfoByID(id);
@@ -310,7 +441,7 @@ class Bot {
             message.reply({
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm ${id}`)]
             });
-            fs.appendFileSync(dir+"/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetAnimeInfoByID has failed!; ${error}\n`);
+            fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetAnimeInfoByID has failed!; ${error}\n`);
             await this.webScraper.reinitialize();
             return;
         }
@@ -395,7 +526,7 @@ class Bot {
             message.reply({
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm`)]
             });
-            fs.appendFileSync(dir+"/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetDubEpisodes has failed!; ${error}\n`);
+            fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetDubEpisodes has failed!; ${error}\n`);
             await this.webScraper.reinitialize();
             return;
         }
@@ -464,7 +595,7 @@ class Bot {
             embeds: [Embeds.follow(info)]
         });
     }
-    
+
     help(message) {
         message.reply(
             '```css\n' +
@@ -479,7 +610,8 @@ class Bot {
             '!confirm - Подтвердить действие\n \tВ процессе follow принимает параметр <n> чтобы выбрать озвучку \n\n' +
             '!abort - Останавливает процесс follow\n\n' +
             '!unfollow <ID> - Выдает список озвучек отслеживаемых для этого тайтла и позволяет отписаться от них\n\n' +
-            '!help - Выводит это сообщение' +
+            '!help - Выводит это сообщение\n\n' +
+            '!awawawa - awawawa' +
             '```'
         );
     }
@@ -510,9 +642,9 @@ class Bot {
             });
             return;
         }
-        const embed = Embeds.list(anime);
+        const embeds = Embeds.list(anime);
         message.reply({
-            embeds: [embed]
+            embeds: embeds
         });
     }
 
