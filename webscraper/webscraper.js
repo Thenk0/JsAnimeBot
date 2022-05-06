@@ -11,7 +11,16 @@ class WebScraper {
     async initialize() {
         this.browser = await puppeteer.launch({
             headless: true,
-            args: ['--single-process', '--no-zygote', '--start-maximized', "--no-sandbox"],
+            args: ['--single-process',
+                '--no-zygote',
+                '--start-maximized',
+                "--no-sandbox",
+                '--disable-gpu',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run'
+            ],
         });
         this.filters = [
             "appmetrika.yandex.ru",
