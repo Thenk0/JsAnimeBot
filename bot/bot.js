@@ -659,6 +659,7 @@ class Bot {
             return;
         }
         let info;
+        await this.webScraper.initialize();
         try {
             info = await this.webScraper.getAnimeInfoByID(id);
         } catch (error) {
@@ -667,15 +668,17 @@ class Bot {
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm ${id}`)]
             });
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetAnimeInfoByID has failed!; ${error}\n`);
-            await this.webScraper.reinitialize();
+            await webScraperChecker.close();
             return;
         }
         if (info == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm ${id}`)]
             });
+            await webScraperChecker.close();
             return;
         }
+        await this.webScraper.close();
         info.episodes = this.animeDB.getAnimeCached(id).currentEpisodes
         info.url = this.animeFollowObj.url;
         this.animeFollowObj.title = info.title;
@@ -743,6 +746,7 @@ class Bot {
     async getAnimeInfo(message) {
         this.dubPick = true;
         const timeBefore = Date.now();
+        await this.webScraper.initialize();
         let dubs
         try {
             dubs = await this.webScraper.getDubEpisodes(this.animeFollowObj.url);
@@ -752,15 +756,17 @@ class Bot {
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm`)]
             });
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetDubEpisodes has failed!; ${error}\n`);
-            await this.webScraper.reinitialize();
+            await webScraperChecker.close();
             return;
         }
         if (dubs == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm`)]
             });
+            await webScraperChecker.close();
             return;
         }
+        await this.webScraper.close();
         const timeAfter = Date.now() - timeBefore;
         this.animeFollowObj.dubInfo = dubs;
         for (let i = 0; i < this.animeFollowObj.dubInfo.length; i++) {
@@ -797,6 +803,7 @@ class Bot {
         const timeBefore = Date.now();
         const id = args[0];
         this.animeFollowObj.url = id;
+        this.webScraper.initialize();
         let info;
         try {
             info = await this.webScraper.getAnimeInfoByID(id);
@@ -806,15 +813,17 @@ class Bot {
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm ${id}`)]
             });
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get anime info failed! For more information check error.log`));
-            await this.webScraper.reinitialize();
+            await webScraperChecker.close();
             return;
         }
         if (info == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm ${id}`)]
             });
+            await webScraperChecker.close();
             return;
         }
+        this.webScraper.close();
         const timeAfter = Date.now() - timeBefore;
         message.reply({
             embeds: [Embeds.follow(info)]

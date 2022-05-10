@@ -35,8 +35,7 @@ const shikimoriApi = new ShikimoriApi();
 const animeDB = new AnimeDB();
 const webScraperDiscord = new WebScraper();
 const webScraperChecker = new WebScraper();
-webScraperDiscord.initialize();
-webScraperChecker.initialize();
+
 
 process.on('beforeExit', () => {
     webScraperChecker.close();
@@ -209,6 +208,7 @@ async function checkShikimoriWatchList() {
 }
 
 async function checkNewFollowedEpisodes() {
+    await webScraperChecker.initialize();
     for (let i = 0; i < animeDB.cachedFollows.length; i++) {
         const anime = animeDB.cachedFollows[i];
         console.log(chalk.cyan(`${Embeds.formatedDate()}: AutoCheck) Checking anime ${anime.animeName}`));
@@ -246,5 +246,6 @@ async function checkNewFollowedEpisodes() {
             animeDB.updateEpisodes(anime);
         }
     }
+    await webScraperChecker.close();
     return 0;
 }
