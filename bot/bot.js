@@ -96,12 +96,14 @@ class Bot {
                     embeds: [Embeds.success("Пауза выключена", command)]
                 })
                 break;
+            case "quit":
             case "stop":
                 this.stopmusic(message, message.guild.id);
                 message.reply({
                     embeds: [Embeds.success("Воспроизвездение успешно остановлено", command)]
                 })
                 break;
+            case "q":
             case "queue":
                 if (this.musicQueue.length == 0) {
                     return message.reply({
@@ -112,19 +114,22 @@ class Bot {
                     embeds: Embeds.queue(this.musicQueue)
                 })
                 break;
+            case "skip":
             case "next":
-                this.nextSong(message);
+                this.nextSong(message, command);
                 break;
+            case "song":
+            case "add":
             case "play":
                 this.playyt(VC, args, message.guild.id, message);
                 break;
             case "help":
                 message.reply(
-                    '```css\n' +
+                    '```\n' +
                     '!help - Выводит это сообщение\n\n' +
-                    '!play <search> - Ищет на youtube параметр search и воспроизводит аудио, если аудио в прогрессе, добавляет его в очередь\n\n' +
-                    '!queue - Выводит информацию об очереди песен\n\n' +
-                    '!next - Пропускает текущий трэк\n\n' +
+                    '!play|!song|!add <search> - Ищет на youtube параметр search и воспроизводит аудио, если аудио в прогрессе, добавляет его в очередь\n\n' +
+                    '!queue|!q - Выводит информацию об очереди песен\n\n' +
+                    '!next|!skip - Пропускает текущий трэк\n\n' +
                     '!pause - Ставит воспроизведение на паузу\n\n' +
                     '!unpause - Убирает воспроизведение с паузы\n\n' +
                     '!stop - Останавливает музыкального бота, опустошая очередь\n\n' +
@@ -483,9 +488,9 @@ class Bot {
         this.lock = false;
     }
 
-    async nextSong(message) {
+    async nextSong(message, command) {
         if (this.musicQueue.length == 0) return message.reply({
-            embeds: [Embeds.error("Очередь пуста", "next")]
+            embeds: [Embeds.error("Очередь пуста", command)]
         });
         const nextSong = this.musicQueue.shift();
         message.channel.send({
@@ -497,7 +502,7 @@ class Bot {
             inputType: stream.type
         });
         await message.reply({
-            embeds: [Embeds.success("Пропускаем текущую песню", "next")]
+            embeds: [Embeds.success("Пропускаем текущую песню", command)]
         })
         this.musicPlayer.play(resource);
     }
