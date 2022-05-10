@@ -8,7 +8,7 @@ class WebScraper {
     async initialize() {
         this.browser = await puppeteer.launch({
             headless: true,
-            args: ['--single-process',
+            args: [
                 '--no-zygote',
                 '--start-maximized',
                 "--no-sandbox",
