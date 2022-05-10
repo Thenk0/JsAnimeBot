@@ -25,7 +25,7 @@ class AnimeDB {
             maxEpisodes: animeObj.episodes,
             currentEpisodes: animeObj.episodes_aired,
             follow: 0,
-            animeName: titleName, 
+            animeName: titleName,
             animeImage: animeObj.image.original
         };
         this.cachedAnime.push(newanimeObj);
@@ -56,6 +56,17 @@ class AnimeDB {
             follow BOOL NOT NULL,
             animeName TEXT NOT NULL,
             animeImage TEXT NOT NULL
+            );`,
+            function (res) {
+                if (res.error)
+                    throw res.error;
+            }
+        );
+        sqlite.run(
+            `CREATE TABLE IF NOT EXISTS user_subs (
+            id INTEGER PRIMARY KEY,
+            user_id STRING NOT NULL,
+            sub INTEGER NOT NULL
             );`,
             function (res) {
                 if (res.error)
@@ -141,6 +152,38 @@ class AnimeDB {
             if (dub.dubName == dubObj.dubName) return true;
         }
         return false;
+    }
+
+    isUnsubbedToSounds(user_id) {
+        sqlite.connect(this.dbName);
+        const sub = sqlite.run("SELECT sub FROM user_subs WHERE user_id = ?", [user_id]);
+        sqlite.close();
+        if (sub.length == 0) return false;
+        return !sub[0].sub;
+    }
+
+    unsubUser(user_id) {
+        sqlite.connect(this.dbName);
+        const sub = sqlite.run("SELECT sub FROM user_subs WHERE user_id = ?", [user_id]);
+        if (sub) {
+            sqlite.run("UPDATE user_subs SET sub=0 WHERE user_id = ?", [user_id]);
+            sqlite.close();
+            return;
+        }
+        sub = sqlite.run("INSERT INTO user_subs(user_id, sub) VALUES(?,0)", [user_id]);
+        sqlite.close();
+    }
+
+    subUser(user_id) {
+        sqlite.connect(this.dbName);
+        const sub = sqlite.run("SELECT sub FROM user_subs WHERE user_id = ?", [user_id]);
+        if (sub) {
+            sqlite.run("UPDATE user_subs SET sub=1 WHERE user_id = ?", [user_id]);
+            sqlite.close();
+            return;
+        }
+        sub = sqlite.run("INSERT INTO user_subs(user_id, sub) VALUES(?,1)", [user_id]);
+        sqlite.close();
     }
 
     updateEpisodes(animeObj) {
@@ -326,6 +369,10 @@ class AnimeDB {
                 }
             );
             const animeCachedObj = this.getAnimeCached(animeID);
+            if (typeof animeCachedObj === "undefined") {
+                console.log(chalk.redBright(`ERROR ${Embeds.formatedDate()}: AnimeDB) anime in unfollow wasn't found in cache`));
+                return;
+            }
             animeCachedObj.follow = 0;
             animeCachedObj.animeURL = null;
             sqlite.run(

@@ -8,6 +8,9 @@ const Bot = require("./bot/bot");
 const Embeds = require("./bot/embeds");
 const chalk = require("chalk");
 const fs = require('fs');
+const {
+    Console
+} = require("console");
 
 const opsys = process.platform;
 let dir;
@@ -71,6 +74,39 @@ bot.client.on("ready", async function () {
     bot.checkID = checkID;
     bot.setCommands(bot.client);
     console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Commands are set`));
+});
+
+bot.client.on('voiceStateUpdate', (oldState, newState) => {
+    let newUserChannel = newState.channelId;
+    if (newUserChannel === "962953078414409762") return;
+    if (animeDB.isUnsubbedToSounds(newState.id)) return;
+    if (newUserChannel !== null && (oldState.channelId !== newState.channelId)) {
+        switch (newState.id) {
+            case '429295749700911104':
+                bot.playsound(newState.channel, "dima.mp3");
+                break;
+            case '215496875665653760':
+                bot.playsound(newState.channel, "maks.mp3");
+                break;
+            case '317973884156510209':
+                bot.playsound(newState.channel, "vlad.mp3");
+                break;
+            case '277782329940770817':
+                bot.playsound(newState.channel, "erik.mp3");
+                break;
+            case '328511332116725760':
+                bot.playsound(newState.channel, "luba.mp3");
+                break;
+            case '296252867138813962':
+                bot.playsound(newState.channel, "ilya.mp3");
+                break;
+            case '329210681482149888':
+                bot.playsound(newState.channel, "vetal.mp3");
+                break;
+            default:
+                break;
+        }
+    }
 });
 
 function delay(time) {
@@ -189,6 +225,7 @@ async function checkNewFollowedEpisodes() {
             checkResult = await webScraperChecker.getEpisodes(anime.animeURL, checkDubs);
         } catch (error) {
             await webScraperChecker.reinitialize();
+            console.log(error);
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Episode check has failed! Skipping check. For more information check error.log`));
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Episode check has failed!; ${error}\n`);
             continue;

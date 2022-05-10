@@ -6,6 +6,10 @@ const chalk = require("chalk");
 const Voice = require("@discordjs/voice");
 const path = require("path");
 const fs = require('fs');
+const play = require("play-dl");
+const {
+    title
+} = require("process");
 
 const opsys = process.platform;
 let dir;
@@ -40,6 +44,12 @@ class Bot {
         this.checkFunction = checkFunction;
         this.checkID = 0;
         this.lock = false;
+        this.musicQueue = [];
+        this.musicPlayer = Voice.createAudioPlayer({
+            behaviors: {
+                noSubscriber: Voice.NoSubscriberBehavior.Play
+            }
+        });
     }
 
     setCommands(client) {
@@ -53,6 +63,10 @@ class Bot {
             const args = commandBody.split(' ');
             const command = args.shift().toLowerCase();
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Recieved command ${command}`));
+            if (message.channelId === Config.MUSIC_CHANNEL_ID) {
+                this.handleMusicCommands(args, command, message);
+                return;
+            }
             if (message.channel.id === Config.COMMAND_CHANNEL_ID) {
                 this.handleCommand(args, command, message);
                 return;
@@ -64,9 +78,95 @@ class Bot {
         });
     }
 
-    handleMemeComands(args, command, message) {
-        let VC;
+    handleMusicCommands(args, command, message) {
+        const VC = message.member.voice.channel;
+        if (!VC) return message.reply({
+            embeds: [Embeds.error("Отправитель не в голосовом канале", "music")]
+        });
         switch (command) {
+            case "pause":
+                this.musicPlayer.pause();
+                message.reply({
+                    embeds: [Embeds.success("Пауза включена", command)]
+                })
+                break;
+            case "unpause":
+                this.musicPlayer.unpause();
+                message.reply({
+                    embeds: [Embeds.success("Пауза выключена", command)]
+                })
+                break;
+            case "stop":
+                this.stopmusic(message, message.guild.id);
+                message.reply({
+                    embeds: [Embeds.success("Воспроизвездение успешно остановлено", command)]
+                })
+                break;
+            case "queue":
+                if (this.musicQueue.length == 0) {
+                    return message.reply({
+                        embeds: [Embeds.success("Очередь пуста", command)]
+                    })
+                }
+                message.reply({
+                    embeds: [Embeds.queue(this.musicQueue)]
+                })
+                break;
+            case "next":
+                this.nextSong(message);
+                break;
+            case "play":
+                this.playyt(VC, args, message.guild.id, message);
+                break;
+            case "help":
+                message.reply(
+                    '```css\n' +
+                    '!help - Выводит это сообщение\n\n' +
+                    '!play <search> - Ищет на youtube параметр search и воспроизводит аудио, если аудио в прогрессе, добавляет его в очередь\n\n' +
+                    '!queue - Выводит информацию об очереди песен\n\n' +
+                    '!next - Пропускает текущий трэк\n\n' +
+                    '!pause - Ставит воспроизведение на паузу\n\n' +
+                    '!unpause - Убирает воспроизведение с паузы\n\n' +
+                    '```'
+                );
+                break;
+            default:
+                this.notRecognized(message, command);
+                break;
+        }
+    }
+
+    handleMemeComands(args, command, message) {
+        const VC = message.member.voice.channel;;
+        switch (command) {
+            case "unsub":
+                this.animeDB.unsubUser(message.member.id);
+                message.reply({
+                    embeds: [Embeds.success(`При заходе на канал больше не будут проигрываться звуки`, "unsub")]
+                });
+                break;
+            case "sub":
+                this.animeDB.subUser(message.member.id);
+                message.reply({
+                    embeds: [Embeds.success(`При заходе на канал будут проигрываться звуки`, "sub")]
+                });
+                break;
+            case "sex":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                }
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "sex.mp3");
+                message.delete();
+                break;
             case "augh":
                 if (this.lock) {
                     message.delete();
@@ -74,14 +174,13 @@ class Bot {
                         embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
                     });
                 }
-                VC = message.member.voice.channel;
                 if (!VC) {
                     message.delete();
                     return message.channel.send({
                         embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
                     });
                 }
-                this.playsound(VC, "augh.mp3", 2000);
+                this.playsound(VC, "augh.mp3");
                 message.delete();
                 break;
             case "toob":
@@ -91,14 +190,13 @@ class Bot {
                         embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
                     });
                 }
-                VC = message.member.voice.channel;
                 if (!VC) {
                     message.delete();
                     return message.channel.send({
                         embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
                     });
                 }
-                this.playsound(VC, "toob.mp3", 5250);
+                this.playsound(VC, "toob.mp3");
                 message.delete();
                 break;
             case "super_awa":
@@ -108,14 +206,13 @@ class Bot {
                         embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
                     });
                 }
-                VC = message.member.voice.channel;
                 if (!VC) {
                     message.delete();
                     return message.channel.send({
                         embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
                     });
                 }
-                this.playsound(VC, "super_awa.mp3", 10000);
+                this.playsound(VC, "super_awa.mp3");
                 message.delete();
                 break;
             case "gnome":
@@ -125,14 +222,13 @@ class Bot {
                         embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
                     });
                 }
-                VC = message.member.voice.channel;
                 if (!VC) {
                     message.delete();
                     return message.channel.send({
                         embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
                     });
                 }
-                this.playsound(VC, "gnome.mp3", 1500);
+                this.playsound(VC, "gnome.mp3");
                 message.delete();
                 break;
             case "bruh":
@@ -157,17 +253,18 @@ class Bot {
     }
 
     handleCommand(args, command, message) {
+        let VC;
         switch (command) {
             case "awawawa":
                 if (this.lock)
                     return message.reply({
                         embeds: [Embeds.error("Бот не может принимать команды в данный момент", "awawawa")]
                     });
-                const VC = message.member.voice.channel;
+                VC = message.member.voice.channel;
                 if (!VC) return message.reply({
                     embeds: [Embeds.error("Отправитель не в голосовом канале", "awawawa")]
                 });
-                this.playsound(VC, "waw.mp3", 2500);
+                this.playsound(VC, "waw.mp3");
                 break;
 
             case "forceupdate":
@@ -375,8 +472,99 @@ class Bot {
             embeds: [Embeds.error(`Команда "[!${command}]" не распознана`, command)]
         });
     }
+    stopmusic(message, guildId) {
+        const con = Voice.getVoiceConnection(guildId);
+        if (typeof con === "undefined") return;
+        this.musicQueue = [];
+        con.destroy();
+        this.musicPlayer.stop();
+        this.musicPlayer.removeAllListeners();
+        this.lock = false;
+    }
 
-    async playsound(VC, filename, quitdelay) {
+    async nextSong(message) {
+        if (this.musicQueue.length == 0) return message.reply({
+            embeds: [Embeds.error("Очередь пуста", "next")]
+        });
+        const nextSong = this.musicQueue.shift();
+        const stream = await play.stream(nextSong.url);
+        const resource = Voice.createAudioResource(stream.stream, {
+            inputType: stream.type
+        });
+        await message.reply({
+            embeds: [Embeds.success("Пропускаем текущую песню", "next")]
+        })
+        this.musicPlayer.play(resource);
+    }
+
+    async playyt(VC, search, guildId, message) {
+        this.lock = true;
+        search = search.join(" ");
+        const con = Voice.getVoiceConnection(guildId);
+        if (typeof con !== "undefined") {
+            const yt_info = await play.search(search, {
+                limit: 1
+            })
+            this.musicQueue.push({
+                url: yt_info[0].url,
+                title: yt_info[0].title
+            });
+            message.reply({
+                embeds: [Embeds.foundtrack(yt_info[0])]
+            });
+            return;
+        }
+        const connection = Voice.joinVoiceChannel({
+            channelId: VC.id,
+            guildId: VC.guild.id,
+            adapterCreator: VC.guild.voiceAdapterCreator,
+            selfDeaf: false,
+            selfMute: false
+        });
+
+        connection.subscribe(this.musicPlayer);
+        this.musicPlayer.on(Voice.AudioPlayerStatus.Playing, () => {
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${search}`));
+        });
+        this.musicPlayer.on("error", error => {
+            console.error(chalk.red(`${Embeds.formatedDate()}: Bot) Audio failed ${error.message}`));
+            fs.appendFileSync(dir + "/animebot_error.log", `ERROR| ${Embeds.formatedDate()}: Bot) Audio failed ${error}\n`);
+        });
+
+        connection.on(Voice.VoiceConnectionStatus.Ready, async () => {
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Ready to play audio`));
+            const yt_info = await play.search(search, {
+                limit: 1
+            })
+            message.reply({
+                embeds: [Embeds.foundtrack(yt_info[0])]
+            });
+            const stream = await play.stream(yt_info[0].url);
+            const resource = Voice.createAudioResource(stream.stream, {
+                inputType: stream.type
+            });
+            this.musicPlayer.play(resource);
+            this.musicPlayer.on(Voice.AudioPlayerStatus.Idle, async () => {
+                if (this.musicQueue.length == 0) {
+                    const con = Voice.getVoiceConnection(guildId);
+                    if (typeof con !== "undefined") con.destroy();
+                    this.lock = false;
+                    return;
+                }
+                const nextSong = this.musicQueue.shift();
+                const stream = await play.stream(nextSong.url);
+                const resource = Voice.createAudioResource(stream.stream, {
+                    inputType: stream.type
+                });
+                this.musicPlayer.play(resource);
+            })
+        });
+    }
+
+    async playsound(VC, filename) {
+        if (this.lock) return;
+        const con = Voice.getVoiceConnection(VC.guild.id);
+        if (typeof con !== "undefined") con.destroy();
         this.lock = true;
         const connection = Voice.joinVoiceChannel({
             channelId: VC.id,
@@ -398,12 +586,12 @@ class Bot {
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Ready to play audio`));
             const resource = Voice.createAudioResource(path.join(__dirname, "..", "audio", filename));
             player.play(resource);
-            setTimeout(() => {
+            player.on(Voice.AudioPlayerStatus.Idle, () => {
+                const con = Voice.getVoiceConnection(VC.guild.id);
+                if (typeof con !== "undefined") con.destroy();
                 this.lock = false;
-                connection.destroy();
-            }, quitdelay);
+            })
         });
-
     }
 
     async forceUpdate(message) {

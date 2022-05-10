@@ -5,6 +5,39 @@ const {
 
 class Embeds {
 
+    static queue(queue) {
+        const embed = new MessageEmbed()
+            .setColor("#7F00FF")
+            .setTitle('DJ Litminer')
+            .setDescription('Очередь музыки 🎵🎵🎵')
+            .setTimestamp()
+            .setFooter({
+                text: "Очередь от"
+            });
+        let dubInfo = "```ini\n";
+        queue.forEach((song, i) => {
+            dubInfo += `🎵${i+1}): [${song.title}]\n`;
+        });
+        dubInfo += "```";
+        embed.addField("Текущая очередь", dubInfo);
+        return embed;
+    }
+
+    static foundtrack(trackinfo) {
+        const embed = new MessageEmbed()
+            .setColor("#48D1CC")
+            .setTitle('DJ Litminer')
+            .setDescription('Найден трек 🎵🎵🎵')
+            .setImage(trackinfo.thumbnails[0].url)
+            .setURL(trackinfo.url)
+            .setTimestamp()
+            .setFooter({
+                text: "Новый трек от"
+            });
+        embed.addField("Найдено видео", trackinfo.title);
+        return embed;
+    }
+
     static success(response, command) {
         let strresponse = "```css\n";
         strresponse += `${response}\n`;

@@ -2,11 +2,8 @@ const puppeteer = require("puppeteer");
 const chalk = require("chalk");
 const Embeds = require("../bot/embeds");
 
-function delay(time) {
-    return new Promise(function (resolve) {
-        setTimeout(resolve, time)
-    });
-}
+
+
 class WebScraper {
     async initialize() {
         this.browser = await puppeteer.launch({
@@ -82,20 +79,36 @@ class WebScraper {
         if (response.status() != 200) {
             throw new Error(`Page has returned ${response.status()} code`)
         }
+        let div_selector_to_remove = ".navbar";
+        await page.evaluate((sel) => {
+            var elements = document.querySelectorAll(sel);
+            for (var i = 0; i < elements.length; i++) {
+                elements[i].parentNode.removeChild(elements[i]);
+            }
+        }, div_selector_to_remove);
         await page.waitForSelector("#player-iframe");
         let elementHandle = await page.$("#player-iframe");
-        let [h5] = await page.$x("//h5[text()='Рейтинг']");
+        await page.evaluate(() => {
+            const el = document.querySelector("div.player");
+            const rect = el.getBoundingClientRect();
+            const x = rect.left + window.scrollX;
+            const y = rect.top + window.scrollY - 200;
+            window.scrollTo(parseInt(x || 0, 10), parseInt(y || 0, 10));
+        });
         let frame = await elementHandle.contentFrame();
         await frame.waitForSelector(".serial-panel");
-        await h5.evaluate(el => el.scrollIntoView());
         for (let i = 0; i < dubs.length; i++) {
             const dub = dubs[i];
             const dubName = dub.dubName;
-            let [h5] = await page.$x("//h5[text()='Рейтинг']");
-            await h5.evaluate(el => el.scrollIntoView());
+            await page.evaluate(() => {
+                const el = document.querySelector("div.player");
+                const rect = el.getBoundingClientRect();
+                const x = rect.left + window.scrollX;
+                const y = rect.top + window.scrollY - 200;
+                window.scrollTo(parseInt(x || 0, 10), parseInt(y || 0, 10));
+            });
             let elementHandle = await page.$("#player-iframe");
             console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Player frame found`));
-
             let frame = await elementHandle.contentFrame();
             await frame.waitForSelector(".serial-panel");
             console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Player frame loaded`));
@@ -223,7 +236,13 @@ class WebScraper {
         await page.waitForSelector("#player-iframe");
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Waiting for player`));
         let elementHandle = await page.$("#player-iframe");
-        let [h5] = await page.$x("//h5[text()='Рейтинг']");
+        await page.evaluate(() => {
+            const el = document.querySelector("div.player");
+            const rect = el.getBoundingClientRect();
+            const x = rect.left + window.scrollX;
+            const y = rect.top + window.scrollY - 200;
+            window.scrollTo(parseInt(x || 0, 10), parseInt(y || 0, 10));
+        });
         let frame = await elementHandle.contentFrame();
         await frame.waitForSelector(".serial-panel");
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Player is ready`));
@@ -234,12 +253,16 @@ class WebScraper {
             let value = await element.evaluate(el => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
             dubsArray.push(value);
         }
-        await h5.evaluate(el => el.scrollIntoView());
         let newDubsArray = [];
         for (let i = 0; i < dubsArray.length; i++) {
             const element = dubsArray[i];
-            let [h5] = await page.$x("//h5[text()='Рейтинг']");
-            await h5.evaluate(el => el.scrollIntoView());
+            await page.evaluate(() => {
+                const el = document.querySelector("div.player");
+                const rect = el.getBoundingClientRect();
+                const x = rect.left + window.scrollX;
+                const y = rect.top + window.scrollY - 200;
+                window.scrollTo(parseInt(x || 0, 10), parseInt(y || 0, 10));
+            });
             let elementHandle = await page.$("#player-iframe");
             let frame = await elementHandle.contentFrame();
             await frame.waitForSelector(".serial-panel");
@@ -324,6 +347,8 @@ class WebScraper {
             title: titleName
         };
     }
+
+
 }
 
 module.exports = WebScraper;
