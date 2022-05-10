@@ -165,24 +165,24 @@ class AnimeDB {
     unsubUser(user_id) {
         sqlite.connect(this.dbName);
         const sub = sqlite.run("SELECT sub FROM user_subs WHERE user_id = ?", [user_id]);
-        if (sub) {
+        if (sub.length > 0) {
             sqlite.run("UPDATE user_subs SET sub=0 WHERE user_id = ?", [user_id]);
             sqlite.close();
             return;
         }
-        sub = sqlite.run("INSERT INTO user_subs(user_id, sub) VALUES(?,0)", [user_id]);
+        sqlite.run("INSERT INTO user_subs(user_id, sub) VALUES(?,0)", [user_id]);
         sqlite.close();
     }
 
     subUser(user_id) {
         sqlite.connect(this.dbName);
         const sub = sqlite.run("SELECT sub FROM user_subs WHERE user_id = ?", [user_id]);
-        if (sub) {
+        if (sub.length > 0) {
             sqlite.run("UPDATE user_subs SET sub=1 WHERE user_id = ?", [user_id]);
             sqlite.close();
             return;
         }
-        sub = sqlite.run("INSERT INTO user_subs(user_id, sub) VALUES(?,1)", [user_id]);
+        sqlite.run("INSERT INTO user_subs(user_id, sub) VALUES(?,1)", [user_id]);
         sqlite.close();
     }
 
