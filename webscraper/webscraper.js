@@ -142,7 +142,7 @@ class WebScraper {
             dubs[i].newEpisodeNum = episodes.length;
         }
 
-        page.close();
+        await page.close();
         return dubs;
     }
 
@@ -195,7 +195,7 @@ class WebScraper {
             const value = await element.evaluate(el => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
             dubText = `${dubText}\n${i+1}): ${value}`;
         }
-        page.close();
+        await page.close();
         return dubText;
     }
 
@@ -297,7 +297,7 @@ class WebScraper {
             });
         }
 
-        page.close();
+        await page.close();
         return newDubsArray;
     }
 
@@ -339,7 +339,7 @@ class WebScraper {
         const titleName = await page.$eval("h1.p-0", (el) => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
         let imgSrc = await page.$eval(".poster-img", (el) => el.getAttribute("src"));
         imgSrc = `https://aniu.ru${imgSrc}`;
-        page.close();
+        await page.close();
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Got image ${imgSrc}`));
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Got title ${titleName}`));
         return {
