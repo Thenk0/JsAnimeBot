@@ -36,26 +36,6 @@ const animeDB = new AnimeDB();
 const webScraperDiscord = new WebScraper();
 const webScraperChecker = new WebScraper();
 
-
-process.on('beforeExit', () => {
-    webScraperChecker.close();
-    webScraperDiscord.close();
-});
-process.on('uncaughtException', () => {
-    webScraperChecker.close();
-    webScraperDiscord.close();
-});
-const termSignals = ['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL',
-    'SIGTRAP', 'SIGABRT',
-    'SIGBUS', 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGTERM'
-];
-termSignals.forEach((eventType) => {
-    process.on(eventType, () => {
-        webScraperChecker.close();
-        webScraperDiscord.close();
-    });
-});
-
 let checkID = 0;
 const bot = new Bot(webScraperDiscord, animeDB, checkShikimoriWatchList);
 let infoChannel = {};
