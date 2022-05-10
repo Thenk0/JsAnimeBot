@@ -109,7 +109,7 @@ class Bot {
                     })
                 }
                 message.reply({
-                    embeds: [Embeds.queue(this.musicQueue)]
+                    embeds: Embeds.queue(this.musicQueue)
                 })
                 break;
             case "next":
@@ -488,6 +488,10 @@ class Bot {
             embeds: [Embeds.error("Очередь пуста", "next")]
         });
         const nextSong = this.musicQueue.shift();
+        message.channel.send({
+            embeds: [Embeds.currentTrack(nextSong)]
+        });
+        console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${nextSong.title}`));
         const stream = await play.stream(nextSong.url);
         const resource = Voice.createAudioResource(stream.stream, {
             inputType: stream.type
@@ -506,9 +510,15 @@ class Bot {
             const yt_info = await play.search(search, {
                 limit: 1
             })
+            if (yt_info.length == 0) {
+                return message.reply({
+                    embeds: [Embeds.error("Видео не было найдено", "play")]
+                });
+            }
             this.musicQueue.push({
                 url: yt_info[0].url,
-                title: yt_info[0].title
+                title: yt_info[0].title,
+                thumbnail: yt_info[0].thumbnails[0].url
             });
             message.reply({
                 embeds: [Embeds.foundtrack(yt_info[0])]
@@ -524,8 +534,8 @@ class Bot {
         });
 
         connection.subscribe(this.musicPlayer);
-        this.musicPlayer.on(Voice.AudioPlayerStatus.Playing, () => {
-            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${search}`));
+        this.musicPlayer.on(Voice.AudioPlayerStatus.Playing, status => {
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Begin playing track`));
         });
         this.musicPlayer.on("error", error => {
             console.error(chalk.red(`${Embeds.formatedDate()}: Bot) Audio failed ${error.message}`));
@@ -537,14 +547,30 @@ class Bot {
             const yt_info = await play.search(search, {
                 limit: 1
             })
+            if (yt_info.length == 0) {
+                connection.destroy();
+                return message.reply({
+                    embeds: [Embeds.error("Видео не было найдено", "play")]
+                });
+            }
             message.reply({
                 embeds: [Embeds.foundtrack(yt_info[0])]
             });
+            let currentTrack = yt_info[0].title;
             const stream = await play.stream(yt_info[0].url);
+            message.channel.send({
+                embeds: [Embeds.currentTrack({
+                    url: yt_info[0].url,
+                    title: yt_info[0].title,
+                    thumbnail: yt_info[0].thumbnails[0].url
+                })]
+            });
             const resource = Voice.createAudioResource(stream.stream, {
                 inputType: stream.type
             });
             this.musicPlayer.play(resource);
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
+
             this.musicPlayer.on(Voice.AudioPlayerStatus.Idle, async () => {
                 if (this.musicQueue.length == 0) {
                     const con = Voice.getVoiceConnection(guildId);
@@ -553,10 +579,15 @@ class Bot {
                     return;
                 }
                 const nextSong = this.musicQueue.shift();
+                message.channel.send({
+                    embeds: [Embeds.currentTrack(nextSong)]
+                });
+                let currentTrack = nextSong.title;
                 const stream = await play.stream(nextSong.url);
                 const resource = Voice.createAudioResource(stream.stream, {
                     inputType: stream.type
                 });
+                console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
                 this.musicPlayer.play(resource);
             })
         });

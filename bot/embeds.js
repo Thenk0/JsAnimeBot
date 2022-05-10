@@ -5,22 +5,27 @@ const {
 
 class Embeds {
 
-    static queue(queue) {
-        const embed = new MessageEmbed()
-            .setColor("#7F00FF")
-            .setTitle('DJ Litminer')
-            .setDescription('Очередь музыки 🎵🎵🎵')
-            .setTimestamp()
-            .setFooter({
-                text: "Очередь от"
+    static queue(queues) {
+        let arrays = [];
+        const queueCopy = queues.filter(() => true);
+        const size = 25;
+        while (queueCopy.length > 0) arrays.push(queueCopy.splice(0, size));
+        let embeds = [];
+        arrays.forEach((queuePart, j) => {
+            const embed = new MessageEmbed()
+                .setColor("#7F00FF")
+                .setTitle('DJ Litminer')
+                .setDescription(`Очередь музыки ${j+1} 🎵🎵🎵`)
+                .setTimestamp()
+                .setFooter({
+                    text: "Очередь от"
+                });
+            queuePart.forEach((song, i) => {
+                embed.addField(`🎵 ${i+1}):`, `\`\`\`ini\n[${song.title}]\`\`\``);
             });
-        let dubInfo = "```ini\n";
-        queue.forEach((song, i) => {
-            dubInfo += `🎵${i+1}): [${song.title}]\n`;
-        });
-        dubInfo += "```";
-        embed.addField("Текущая очередь", dubInfo);
-        return embed;
+            embeds.push(embed);
+        })
+        return embeds;
     }
 
     static foundtrack(trackinfo) {
@@ -35,6 +40,21 @@ class Embeds {
                 text: "Новый трек от"
             });
         embed.addField("Найдено видео", trackinfo.title);
+        return embed;
+    }
+
+    static currentTrack(trackinfo) {
+        const embed = new MessageEmbed()
+            .setColor("#1F51FF")
+            .setTitle('DJ Litminer')
+            .setDescription('Текущий трэк 🎵🎵🎵')
+            .setImage(trackinfo.thumbnail)
+            .setURL(trackinfo.url)
+            .setTimestamp()
+            .setFooter({
+                text: "Текущий трэк"
+            });
+        embed.addField("Название трэка", trackinfo.title);
         return embed;
     }
 
@@ -124,7 +144,8 @@ class Embeds {
     static list(animes) {
         let arrays = [];
         const size = 25;
-        while (animes.length > 0) arrays.push(animes.splice(0, size));
+        const animesCopy = animes.filter(() => true);
+        while (animesCopy.length > 0) arrays.push(animesCopy.splice(0, size));
         let embeds = [];
         arrays.forEach((array, i) => {
             const embed = new MessageEmbed()
