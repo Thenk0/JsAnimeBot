@@ -478,6 +478,7 @@ class Bot {
             embeds: [Embeds.error(`Команда "[!${command}]" не распознана`, command)]
         });
     }
+
     stopmusic(message, guildId) {
         const con = Voice.getVoiceConnection(guildId);
         if (typeof con === "undefined") return;
@@ -493,7 +494,10 @@ class Bot {
             embeds: [Embeds.error("Очередь пуста", command)]
         });
         const nextSong = this.musicQueue.shift();
-        message.channel.send({
+        await message.reply({
+            embeds: [Embeds.success("Пропускаем текущую песню", command)]
+        })
+        await message.channel.send({
             embeds: [Embeds.currentTrack(nextSong)]
         });
         console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${nextSong.title}`));
@@ -501,9 +505,6 @@ class Bot {
         const resource = Voice.createAudioResource(stream.stream, {
             inputType: stream.type
         });
-        await message.reply({
-            embeds: [Embeds.success("Пропускаем текущую песню", command)]
-        })
         this.musicPlayer.play(resource);
     }
 
@@ -551,17 +552,17 @@ class Bot {
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Ready to play audio`));
             const yt_info = await play.search(search, {
                 limit: 1
-            })
+            });
             if (yt_info.length == 0) {
                 connection.destroy();
                 return message.reply({
                     embeds: [Embeds.error("Видео не было найдено", "play")]
                 });
-            }
+            };
             message.reply({
                 embeds: [Embeds.foundtrack(yt_info[0])]
             });
-            let currentTrack = yt_info[0].title;
+            const currentTrack = yt_info[0].title;
             const stream = await play.stream(yt_info[0].url);
             message.channel.send({
                 embeds: [Embeds.currentTrack({
@@ -575,27 +576,30 @@ class Bot {
             });
             this.musicPlayer.play(resource);
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
-
-            this.musicPlayer.on(Voice.AudioPlayerStatus.Idle, async () => {
-                if (this.musicQueue.length == 0) {
-                    const con = Voice.getVoiceConnection(guildId);
-                    if (typeof con !== "undefined") con.destroy();
-                    this.lock = false;
-                    return;
-                }
-                const nextSong = this.musicQueue.shift();
-                message.channel.send({
-                    embeds: [Embeds.currentTrack(nextSong)]
-                });
-                let currentTrack = nextSong.title;
-                const stream = await play.stream(nextSong.url);
-                const resource = Voice.createAudioResource(stream.stream, {
-                    inputType: stream.type
-                });
-                console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
-                this.musicPlayer.play(resource);
-            })
         });
+
+        this.musicPlayer.on(Voice.AudioPlayerStatus.Idle, async () => {
+            if (this.musicQueue.length == 0) {
+                const con = Voice.getVoiceConnection(guildId);
+                if (typeof con !== "undefined") con.destroy();
+                this.musicPlayer.stop();
+                this.musicPlayer.removeAllListeners();
+                this.lock = false;
+                return;
+            }
+            const nextSong = this.musicQueue.shift();
+            message.channel.send({
+                embeds: [Embeds.currentTrack(nextSong)]
+            });
+            let currentTrack = nextSong.title;
+            const stream = await play.stream(nextSong.url);
+            const resource = Voice.createAudioResource(stream.stream, {
+                inputType: stream.type
+            });
+            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
+            this.musicPlayer.play(resource);
+            return;
+        })
     }
 
     async playsound(VC, filename) {
@@ -623,12 +627,12 @@ class Bot {
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Ready to play audio`));
             const resource = Voice.createAudioResource(path.join(__dirname, "..", "audio", filename));
             player.play(resource);
-            player.on(Voice.AudioPlayerStatus.Idle, () => {
-                const con = Voice.getVoiceConnection(VC.guild.id);
-                if (typeof con !== "undefined") con.destroy();
-                this.lock = false;
-            })
         });
+        player.on(Voice.AudioPlayerStatus.Idle, () => {
+            const con = Voice.getVoiceConnection(VC.guild.id);
+            if (typeof con !== "undefined") con.destroy();
+            this.lock = false;
+        })
     }
 
     async forceUpdate(message) {
