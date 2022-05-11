@@ -7,6 +7,7 @@ class Embeds {
 
     static queue(queues) {
         let arrays = [];
+        console.log(queues);
         const queueCopy = queues.filter(() => true);
         const size = 25;
         while (queueCopy.length > 0) arrays.push(queueCopy.splice(0, size));

@@ -493,19 +493,31 @@ class Bot {
         if (this.musicQueue.length == 0) return message.reply({
             embeds: [Embeds.error("Очередь пуста", command)]
         });
-        const nextSong = this.musicQueue.shift();
         await message.reply({
             embeds: [Embeds.success("Пропускаем текущую песню", command)]
         })
-        await message.channel.send({
-            embeds: [Embeds.currentTrack(nextSong)]
-        });
-        console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${nextSong.title}`));
-        const stream = await play.stream(nextSong.url);
-        const resource = Voice.createAudioResource(stream.stream, {
-            inputType: stream.type
-        });
-        this.musicPlayer.play(resource);
+        let trynext = true;
+        while (trynext) {
+            const nextSong = this.musicQueue.shift();
+            try {
+                await message.channel.send({
+                    embeds: [Embeds.currentTrack(nextSong)]
+                });
+                const stream = await play.stream(nextSong.url);
+                const resource = Voice.createAudioResource(stream.stream, {
+                    inputType: stream.type
+                });
+                console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${nextSong.title}`));
+                this.musicPlayer.play(resource);
+                trynext = false;
+            } catch (error) {
+                if (this.musicQueue.length == 0) trynext = false;
+                console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio ${nextSong.title} is unavailable`));
+                message.channel.send({
+                    embeds: [Embeds.error(`Видео "${nextSong.title}" не доступно`, "play")]
+                });
+            }
+        }
     }
 
     async playyt(VC, search, guildId, message) {
@@ -563,19 +575,32 @@ class Bot {
                 embeds: [Embeds.foundtrack(yt_info[0])]
             });
             const currentTrack = yt_info[0].title;
-            const stream = await play.stream(yt_info[0].url);
-            message.channel.send({
-                embeds: [Embeds.currentTrack({
-                    url: yt_info[0].url,
-                    title: yt_info[0].title,
-                    thumbnail: yt_info[0].thumbnails[0].url
-                })]
-            });
-            const resource = Voice.createAudioResource(stream.stream, {
-                inputType: stream.type
-            });
-            this.musicPlayer.play(resource);
-            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
+            try {
+                const stream = await play.stream(yt_info[0].url);
+                await message.channel.send({
+                    embeds: [Embeds.currentTrack({
+                        url: yt_info[0].url,
+                        title: yt_info[0].title,
+                        thumbnail: yt_info[0].thumbnails[0].url
+                    })]
+                });
+                const resource = Voice.createAudioResource(stream.stream, {
+                    inputType: stream.type
+                });
+                this.musicPlayer.play(resource);
+                console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
+            } catch (error) {
+                console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio is unavailable`));
+                message.channel.send({
+                    embeds: [Embeds.error(`Видео "${currentTrack}" не доступно`, "play")]
+                });
+                this.musicPlayer.stop();
+                this.musicPlayer.removeAllListeners();
+                const con = Voice.getVoiceConnection(guildId);
+                if (typeof con !== "undefined") con.destroy();
+                this.lock = false;
+                return;
+            }
         });
 
         this.musicPlayer.on(Voice.AudioPlayerStatus.Idle, async () => {
@@ -587,17 +612,29 @@ class Bot {
                 this.lock = false;
                 return;
             }
-            const nextSong = this.musicQueue.shift();
-            message.channel.send({
-                embeds: [Embeds.currentTrack(nextSong)]
-            });
-            let currentTrack = nextSong.title;
-            const stream = await play.stream(nextSong.url);
-            const resource = Voice.createAudioResource(stream.stream, {
-                inputType: stream.type
-            });
-            console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
-            this.musicPlayer.play(resource);
+            let trynext = true;
+            while (trynext) {
+                const nextSong = this.musicQueue.shift();
+                let currentTrack = nextSong.title;
+                message.channel.send({
+                    embeds: [Embeds.currentTrack(nextSong)]
+                });
+                try {
+                    const stream = await play.stream(nextSong.url);
+                    const resource = Voice.createAudioResource(stream.stream, {
+                        inputType: stream.type
+                    });
+                    console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
+                    this.musicPlayer.play(resource);
+                    trynext = false;
+                } catch (error) {
+                    if (this.musicQueue.length == 0) trynext = false;
+                    console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio ${currentTrack} is unavailable`));
+                    message.channel.send({
+                        embeds: [Embeds.error(`Видео "${currentTrack}" не доступно`, "play")]
+                    });
+                }
+            }
             return;
         })
     }
