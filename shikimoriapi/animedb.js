@@ -1,6 +1,7 @@
 const sqlite = require("sqlite-sync");
 const chalk = require("chalk");
 const Embeds = require("../bot/embeds");
+const StringSimilarity = require("string-similarity");
 
 class AnimeDB {
     constructor() {
@@ -109,7 +110,6 @@ class AnimeDB {
         );
         sqlite.close();
     }
-
     isAnimeInDB(animeID) {
         sqlite.connect(this.dbName);
         let result = sqlite.run("SELECT * FROM animeFollows WHERE animeID=?", [animeID]);
@@ -243,6 +243,18 @@ class AnimeDB {
         this.cachedAnime = cachedAnime;
     }
 
+    getSimilar(name) {
+        const names = this.cachedAnime.map((anime) => {
+            return anime.animeName;
+        });
+        const result = StringSimilarity.findBestMatch(name, names);
+        if (result.bestMatch.rating < 0.4) return null;
+        const animeResult = this.cachedAnime.find((anime) => {
+            return anime.animeName == result.bestMatch.target;
+        });
+        return animeResult;
+    }
+
     cacheDubs(dubs) {
         dubs.forEach(element => {
             if (this.isDubInDBCached(element.dubName)) return;
@@ -322,7 +334,6 @@ class AnimeDB {
             sqlite.close();
             animeObj.follow = 1;
             animeObj.animeURL = animeURL;
-            console.log(animeObj);
             const followedAnime = this.getFollowedAnimeCached(animeID);
             if (typeof followedAnime == "undefined") {
                 this.cachedFollows.push({
@@ -341,7 +352,6 @@ class AnimeDB {
                         checkNewEpisodes: false
                     }],
                 });
-                console.log("followed successfuly")
                 return;
             }
             followedAnime.dubs.push({

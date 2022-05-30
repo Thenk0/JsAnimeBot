@@ -7,10 +7,6 @@ const Voice = require("@discordjs/voice");
 const path = require("path");
 const fs = require('fs');
 const play = require("play-dl");
-const {
-    title
-} = require("process");
-
 const opsys = process.platform;
 let dir;
 switch (opsys) {
@@ -44,7 +40,10 @@ class Bot {
         this.checkFunction = checkFunction;
         this.checkID = 0;
         this.lock = false;
+        this.pause = false;
         this.musicQueue = [];
+        this.currentTrack = {};
+        this.pausedAt = 0;
         this.musicPlayer = Voice.createAudioPlayer({
             behaviors: {
                 noSubscriber: Voice.NoSubscriberBehavior.Play
@@ -78,20 +77,42 @@ class Bot {
         });
     }
 
-    handleMusicCommands(args, command, message) {
+    async handleMusicCommands(args, command, message) {
         const VC = message.member.voice.channel;
         if (!VC) return message.reply({
             embeds: [Embeds.error("Отправитель не в голосовом канале", "music")]
         });
+        const con = Voice.getVoiceConnection(message.guild.id);
+        if (typeof con !== "undefined") {
+            if (message.member.voice.channel !== message.guild.me.voice.channel) return message.reply({
+                embeds: [Embeds.error("Бот принимает команды, только если вы находитесь с ним в одном канале.", command)],
+            });
+        }
         switch (command) {
             case "pause":
+                if (this.pause) {
+                    return message.reply({
+                        embeds: [Embeds.error("Пауза уже включена", command)]
+                    })
+                }
+                this.pausedAt = new Date().getTime();
                 this.musicPlayer.pause();
+                this.pause = true;
                 message.reply({
                     embeds: [Embeds.success("Пауза включена", command)]
                 })
                 break;
             case "unpause":
+                if (!this.pause) {
+                    return message.reply({
+                        embeds: [Embeds.error("Трек не на паузе", command)]
+                    })
+                }
                 this.musicPlayer.unpause();
+                const currentDate = new Date().getTime()
+                const difference = currentDate - this.pausedAt;
+                this.currentTrack.startedAt += difference;
+                this.pause = false;
                 message.reply({
                     embeds: [Embeds.success("Пауза выключена", command)]
                 })
@@ -118,6 +139,23 @@ class Bot {
             case "next":
                 this.nextSong(message, command);
                 break;
+            case "c":
+            case "с": // Russian fix
+            case "current":
+            case "track":
+            case "now":
+                if (this.pause) {
+                    return message.reply({
+                        embeds: [Embeds.error("Трек на паузе", command)]
+                    })
+                }
+                if (Object.keys(this.currentTrack).length === 0) {
+                    return message.reply({
+                        embeds: [Embeds.error("Нет текущего трека", command)]
+                    })
+                }
+                await Embeds.canvas(message, this.currentTrack);
+                break;
             case "song":
             case "add":
             case "play":
@@ -129,7 +167,8 @@ class Bot {
                     '!help - Выводит это сообщение\n\n' +
                     '!play|!song|!add <search> - Ищет на youtube параметр search и воспроизводит аудио, если аудио в прогрессе, добавляет его в очередь\n\n' +
                     '!queue|!q - Выводит информацию об очереди песен\n\n' +
-                    '!next|!skip - Пропускает текущий трэк\n\n' +
+                    '!next|!skip - Пропускает текущий трек\n\n' +
+                    '!c|!current|!track|!now - Выводит текущий трек\n\n' +
                     '!pause - Ставит воспроизведение на паузу\n\n' +
                     '!unpause - Убирает воспроизведение с паузы\n\n' +
                     '!stop - Останавливает музыкального бота, опустошая очередь\n\n' +
@@ -137,7 +176,10 @@ class Bot {
                 );
                 break;
             default:
-                this.notRecognized(message, command);
+                const commands = [
+                    "help", "play", "song", "add", "queue", "q", "next", "skip", "c", "current", "track", "now", "pause", "unpause", "stop"
+                ];
+                this.notRecognized(message, command, commands);
                 break;
         }
     }
@@ -244,12 +286,8 @@ class Bot {
             case "summon":
                 message.delete();
                 const user = message.guild.members.cache.find(user => user.user.username == args[0]);
-                if (typeof user === "undefined") {
-                    return message.channel.send("Пользователь не найден");
-                }
-                if (!user.roles.cache.some(role => role.name == "Jefors")) {
-                    return message.channel.send("Cannot summon unworthy");
-                }
+                if (typeof user === "undefined") return message.channel.send("Пользователь не найден");
+                if (!user.roles.cache.some(role => role.name == "Jefors")) return message.channel.send("Cannot summon unworthy");
                 user.send("https://media.discordapp.net/attachments/971320408693432320/971353905852207154/test.png?width=1202&height=676");
                 message.channel.send(`I summon thee <@${user.id}>`);
                 break;
@@ -262,10 +300,9 @@ class Bot {
         let VC;
         switch (command) {
             case "awawawa":
-                if (this.lock)
-                    return message.reply({
-                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "awawawa")]
-                    });
+                if (this.lock) return message.reply({
+                    embeds: [Embeds.error("Бот не может принимать команды в данный момент", "awawawa")]
+                });
                 VC = message.member.voice.channel;
                 if (!VC) return message.reply({
                     embeds: [Embeds.error("Отправитель не в голосовом канале", "awawawa")]
@@ -274,10 +311,7 @@ class Bot {
                 break;
 
             case "forceupdate":
-                if (this.checkID == 0) {
-                    message.reply(`Проверка еще не запущена`);
-                    return;
-                }
+                if (this.checkID == 0) return message.reply(`Проверка еще не запущена`);
                 clearInterval(this.checkID);
                 this.forceUpdate(message);
                 break;
@@ -285,14 +319,6 @@ class Bot {
                 if (args.length < 1) {
                     message.reply({
                         embeds: [Embeds.error(`Нет параметра [<ID>], !follow [<ID>]`, `follow`)]
-                    });
-                    return;
-                }
-                if (args.length > 1) {
-                    message.reply({
-                        embeds: [Embeds.error(`!follow [${args.join(" ")}]\n` +
-                            `Слишком много параметров!\n` +
-                            `Команда принимает только 1 параметр [<ID>]`, `follow ${args.join(" ")}`)]
                     });
                     return;
                 }
@@ -307,7 +333,7 @@ class Bot {
             case "confirm":
                 if (!this.followProcess && !this.unfollowProcess) {
                     message.reply({
-                        embeds: [Embeds.error(`Подтверждать нечего`, `confirm}`)]
+                        embeds: [Embeds.error(`Подтверждать нечего`, `confirm`)]
                     });
                     return;
                 }
@@ -328,15 +354,8 @@ class Bot {
                     });
                     return;
                 }
-                if (this.dubPick) {
-                    this.pickDub(args, message);
-                    return;
-                }
-                if (this.unfollowProcess) {
-                    this.unfollowDub(args, message);
-                    return;
-                }
-
+                if (this.dubPick) return this.pickDub(args, message)
+                if (this.unfollowProcess) return this.unfollowDub(args, message);
                 if (!this.dubPick && args.length !== 0) {
                     message.reply({
                         embeds: [Embeds.error(`!confirm [${args.join(" ")}]\n` +
@@ -393,14 +412,6 @@ class Bot {
                     });
                     return;
                 }
-                if (args.length > 1) {
-                    message.reply({
-                        embeds: [Embeds.error(`!unfollow [${args.join(" ")}]\n` +
-                            `Слишком много параметров!\n` +
-                            `Команда принимает только 1 параметр [<ID>]`, `unfollow ${args.join(" ")}`)]
-                    });
-                    return;
-                }
                 if (this.unfollowProcess) {
                     message.reply({
                         embeds: [Embeds.error(`Процесс отписки уже запущен!\nОстановить его можно с помощью команды [!abort]`, `unfollow ${args[0]}`)]
@@ -416,26 +427,13 @@ class Bot {
                     });
                     return;
                 }
-                if (args.length > 1) {
-                    message.reply({
-                        embeds: [Embeds.error(`!getfollow [${args.join(" ")}]\n` +
-                            `Слишком много параметров!\n` +
-                            `Команда принимает только 1 параметр [<ID>]`, `getfollow ${args.join(" ")}`)]
-                    });
-                    return;
-                }
-                if (!this.isNumeric(args[0])) {
-                    message.reply({
-                        embeds: [Embeds.error(`!getfollow [${args.join(" ")}]\n` +
-                            `Неверный параметр!\n` +
-                            `Команда принимает только числа`, `getfollow ${args.join(" ")}`)]
-                    });
-                    return;
-                }
                 this.getfollow(message, args);
                 break;
             case "getfollows":
                 this.getfollows(message);
+                break;
+            case "getcheck":
+                this.getcheck(message);
                 break;
             case "getlist":
                 this.getlist(message);
@@ -444,25 +442,26 @@ class Bot {
                 this.help(message);
                 break;
             default:
-                this.notRecognized(message, command);
+                const commands = [
+                    "forceUpdate",
+                    "getlist",
+                    "getfollows",
+                    "follow",
+                    "changeurl",
+                    "confirm",
+                    "abort",
+                    "getcheck",
+                    "unfollow",
+                    "getdubs",
+                    "help",
+                    "awawawa"
+                ];
+                this.notRecognized(message, command, commands);
                 break;
         }
     }
 
-    notRecognized(message, command) {
-        const commands = [
-            "forceUpdate",
-            "getlist",
-            "getfollows",
-            "follow",
-            "changeurl",
-            "confirm",
-            "abort",
-            "unfollow",
-            "getdubs",
-            "help",
-            "awawawa"
-        ];
+    notRecognized(message, command, commands) {
         const matches = StringSimilarity.findBestMatch(command, commands);
         if (matches.bestMatch.rating > 0.4) {
             message.reply({
@@ -485,6 +484,7 @@ class Bot {
         this.musicQueue = [];
         con.destroy();
         this.musicPlayer.stop();
+        this.currentTrack = {};
         this.musicPlayer.removeAllListeners();
         this.lock = false;
     }
@@ -509,12 +509,13 @@ class Bot {
                 });
                 console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${nextSong.title}`));
                 this.musicPlayer.play(resource);
+                this.currentTrack = nextSong;
                 trynext = false;
             } catch (error) {
                 if (this.musicQueue.length == 0) trynext = false;
                 console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio ${nextSong.title} is unavailable`));
                 message.channel.send({
-                    embeds: [Embeds.error(`Видео "${nextSong.title}" не доступно`, "play")]
+                    embeds: [Embeds.error(`Видео "${nextSong.title}" недоступно`, "play")]
                 });
             }
         }
@@ -536,12 +537,12 @@ class Bot {
             this.musicQueue.push({
                 url: yt_info[0].url,
                 title: yt_info[0].title,
-                thumbnail: yt_info[0].thumbnails[0].url
+                thumbnail: yt_info[0].thumbnails[0].url,
+                length: yt_info[0].durationInSec,
             });
-            message.reply({
+            return message.reply({
                 embeds: [Embeds.foundtrack(yt_info[0])]
             });
-            return;
         }
         const connection = Voice.joinVoiceChannel({
             channelId: VC.id,
@@ -552,7 +553,13 @@ class Bot {
         });
 
         connection.subscribe(this.musicPlayer);
+        const self = this;
         this.musicPlayer.on(Voice.AudioPlayerStatus.Playing, status => {
+            if (!self.currentTrack.started) {
+                const date = new Date();
+                self.currentTrack.startedAt = date.getTime();
+                self.currentTrack.started = true;
+            }
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Begin playing track`));
         });
         this.musicPlayer.on("error", error => {
@@ -575,6 +582,12 @@ class Bot {
                 embeds: [Embeds.foundtrack(yt_info[0])]
             });
             const currentTrack = yt_info[0].title;
+            this.currentTrack = {
+                url: yt_info[0].url,
+                title: yt_info[0].title,
+                thumbnail: yt_info[0].thumbnails[0].url,
+                length: yt_info[0].durationInSec
+            };
             try {
                 const stream = await play.stream(yt_info[0].url);
                 await message.channel.send({
@@ -592,14 +605,13 @@ class Bot {
             } catch (error) {
                 console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio is unavailable`));
                 message.channel.send({
-                    embeds: [Embeds.error(`Видео "${currentTrack}" не доступно`, "play")]
+                    embeds: [Embeds.error(`Видео "${currentTrack}" недоступно`, "play")]
                 });
                 this.musicPlayer.stop();
                 this.musicPlayer.removeAllListeners();
                 const con = Voice.getVoiceConnection(guildId);
                 if (typeof con !== "undefined") con.destroy();
                 this.lock = false;
-                return;
             }
         });
 
@@ -609,6 +621,7 @@ class Bot {
                 if (typeof con !== "undefined") con.destroy();
                 this.musicPlayer.stop();
                 this.musicPlayer.removeAllListeners();
+                this.currentTrack = {};
                 this.lock = false;
                 return;
             }
@@ -626,16 +639,24 @@ class Bot {
                     });
                     console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
                     this.musicPlayer.play(resource);
+                    this.currentTrack = nextSong;
                     trynext = false;
                 } catch (error) {
-                    if (this.musicQueue.length == 0) trynext = false;
+                    if (this.musicQueue.length == 0) {
+                        const con = Voice.getVoiceConnection(guildId);
+                        if (typeof con !== "undefined") con.destroy();
+                        this.musicPlayer.stop();
+                        this.musicPlayer.removeAllListeners();
+                        this.currentTrack = {};
+                        this.lock = false;
+                        trynext = false;
+                    }
                     console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio ${currentTrack} is unavailable`));
                     message.channel.send({
-                        embeds: [Embeds.error(`Видео "${currentTrack}" не доступно`, "play")]
+                        embeds: [Embeds.error(`Видео "${currentTrack}" недоступно`, "play")]
                     });
                 }
             }
-            return;
         })
     }
 
@@ -681,10 +702,12 @@ class Bot {
     }
 
     async follow(args, message) {
-        const timeBefore = Date.now();
-        const id = parseInt(args[0]);
+        const name = args.join(" ");
+        const guess = this.animeDB.getSimilar(name);
+        let id = parseInt(args[0]);
+        if (guess != null) id = guess.animeID;
         if (!this.animeDB.isAnimeInDBCached(id)) return message.reply({
-            embeds: [Embeds.error(`Аниме с таким [ID] не существует в бд`, `confirm ${id}`)]
+            embeds: [Embeds.error(`Аниме с таким [ID] не существует в бд`, `follow ${name}`)]
         });
         this.followProcess = true;
         this.animeFollowObj.id = id;
@@ -696,8 +719,7 @@ class Bot {
             message.reply({
                 embeds: [Embeds.success(`На аниме уже есть подписка, шаг пропущен\nЗапрашиваем сайт на информацию об озвучках. Пожалуйста подождите...`, "follow")]
             });
-            this.getAnimeInfo(message);
-            return;
+            return this.getAnimeInfo(message);
         }
         let info;
         await this.webScraper.initialize();
@@ -706,42 +728,43 @@ class Bot {
         } catch (error) {
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get anime info failed! For more information check error.log`));
             message.reply({
-                embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm ${id}`)]
+                embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `follow ${name}`)]
             });
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetAnimeInfoByID has failed!; ${error}\n`);
-            await webScraperChecker.close();
-            return;
+            return await webScraperChecker.close();
+
         }
         if (info == 404) {
             message.reply({
-                embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm ${id}`)]
+                embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `follow ${name}`)]
             });
-            await webScraperChecker.close();
-            return;
+            return await webScraperChecker.close();
+
         }
         await this.webScraper.close();
-        info.episodes = this.animeDB.getAnimeCached(id).currentEpisodes
+        info.episodes = this.animeDB.getAnimeCached(id).currentEpisodes;
         info.url = this.animeFollowObj.url;
         this.animeFollowObj.title = info.title;
-        const timeAfter = Date.now() - timeBefore;
         message.reply({
             embeds: [Embeds.follow(info)]
         });
     }
 
     unfollow(args, message) {
-        const timeBefore = Date.now();
-        const id = parseInt(args[0]);
+        const name = args.join(" ");
+        const guess = this.animeDB.getSimilar(name);
+        let id = parseInt(args[0]);
+        if (guess != null) id = guess.animeID;
         if (!this.animeDB.isAnimeInDBCached(id)) {
             message.reply({
-                embeds: [Embeds.error(`Аниме с таким [ID] не существует в бд`, `confirm ${id}`)]
+                embeds: [Embeds.error(`Аниме с таким [ID] не существует в бд`, `confirm ${name}`)]
             });
             return;
         }
         this.animeUnFollowObj = this.animeDB.getFollowedAnimeCached(id);
         if (typeof this.animeUnFollowObj === "undefined") {
             message.reply({
-                embeds: [Embeds.error(`Аниме не отслеживается`, `confirm ${id}`)]
+                embeds: [Embeds.error(`Аниме не отслеживается`, `confirm ${name}`)]
             });
             this.animeUnFollowObj = {};
             return;
@@ -759,11 +782,9 @@ class Bot {
         message.reply({
             embeds: [Embeds.unfollowdubs(this.animeUnFollowObj, this.animeUnFollowObj.dubs)]
         });
-        return;
     }
 
     unfollowDub(args, message) {
-        const timeBefore = Date.now();
         const pick = parseInt(args[0]);
         if (pick == 0) {
             this.animeDB.unfollow(this.animeUnFollowObj.animeID);
@@ -781,12 +802,10 @@ class Bot {
         });
         this.unfollowProcess = false;
         this.animeUnFollowObj = {};
-        return;
     }
 
     async getAnimeInfo(message) {
         this.dubPick = true;
-        const timeBefore = Date.now();
         await this.webScraper.initialize();
         let dubs
         try {
@@ -797,18 +816,15 @@ class Bot {
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm`)]
             });
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetDubEpisodes has failed!; ${error}\n`);
-            await webScraperChecker.close();
-            return;
+            return await webScraperChecker.close();
         }
         if (dubs == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm`)]
             });
-            await webScraperChecker.close();
-            return;
+            return await webScraperChecker.close();
         }
         await this.webScraper.close();
-        const timeAfter = Date.now() - timeBefore;
         this.animeFollowObj.dubInfo = dubs;
         for (let i = 0; i < this.animeFollowObj.dubInfo.length; i++) {
             const dub = this.animeFollowObj.dubInfo[i];
@@ -837,11 +853,9 @@ class Bot {
         this.followProcess = false;
         this.dubPick = false;
         this.animeFollowObj = {};
-        return;
     }
 
     async changeUrl(args, message) {
-        const timeBefore = Date.now();
         const id = args[0];
         this.animeFollowObj.url = id;
         this.webScraper.initialize();
@@ -854,18 +868,15 @@ class Bot {
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm ${id}`)]
             });
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get anime info failed! For more information check error.log`));
-            await webScraperChecker.close();
-            return;
+            return await webScraperChecker.close();
         }
         if (info == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm ${id}`)]
             });
-            await webScraperChecker.close();
-            return;
+            return await webScraperChecker.close();
         }
         this.webScraper.close();
-        const timeAfter = Date.now() - timeBefore;
         message.reply({
             embeds: [Embeds.follow(info)]
         });
@@ -878,6 +889,7 @@ class Bot {
             '!getlist - Выводит список аниме и ID на шикимори\n\n' +
             '!getfollow <ID> - Выдает список подписок для отдельного тайтла\n\n' +
             '!getfollows - Выдает список отслеживаемых тайтлов и озвучек.\n\n' +
+            '!getcheck - Выдает список проверяемых тайтлов.\n\n' +
             '!follow <ID> - Запускает процесс подписки, принимает как параметр <ID> аниме на шикимори.\n' +
             '\tВо время процесса Follow, все остальные команды заблокированы\n\n' +
             '!changeurl <ID> <URL> - Изменяет URL аниме на aniu для выбранного тайтла [Not Implemented]\n' +
@@ -891,18 +903,11 @@ class Bot {
         );
     }
 
-    error(message) {
-        message.reply(`Exception: Not implemented`);
-    }
-
     getfollows(message) {
         const follows = this.animeDB.cachedFollows;
-        if (!follows.length) {
-            message.reply({
-                embeds: [Embeds.error(`Список пуст`, `getfollows`)]
-            });
-            return;
-        }
+        if (!follows.length) return message.reply({
+            embeds: [Embeds.error(`Список пуст`, `getfollows`)]
+        });
         const embed = Embeds.followList(follows);
         message.reply({
             embeds: [embed]
@@ -911,12 +916,9 @@ class Bot {
 
     getlist(message) {
         const anime = this.animeDB.cachedAnime;
-        if (!anime.length) {
-            message.reply({
-                embeds: [Embeds.error(`Список пуст`, `getlist`)]
-            });
-            return;
-        }
+        if (!anime.length) return message.reply({
+            embeds: [Embeds.error(`Список пуст`, `getlist`)]
+        });
         const embeds = Embeds.list(anime);
         message.reply({
             embeds: embeds
@@ -924,27 +926,35 @@ class Bot {
     }
 
     getfollow(message, args) {
-        const id = args[0];
-        const anime = this.animeDB.getFollowedAnimeCached(parseInt(id));
+        const name = args.join(" ");
+        const guess = this.animeDB.getSimilar(name);
+        let id = parseInt(args[0]);
+        if (guess != null) id = guess.animeID;
+        const anime = this.animeDB.getFollowedAnimeCached(id);
         if (typeof anime !== "undefined") {
             message.reply({
-                embeds: [Embeds.getfollow(anime)]
+                embeds: [Embeds.getfollow(anime, guess != null)]
             });
             return;
         }
-        const followedids = this.animeDB.cachedFollows.map((a) => {
-            return a.animeID.toString();
-        });
-        const searchResult = StringSimilarity.findBestMatch(id, followedids);
-        if (searchResult.bestMatch.rating < 0.3) {
-            message.reply({
-                embeds: [Embeds.error(`На аниме с таким id нет подписки`, `getfolow ${id}`)]
-            });
-            return;
-        }
-        const animeG = this.animeDB.getFollowedAnimeCached(parseInt(searchResult.bestMatch.target));
         message.reply({
-            embeds: [Embeds.getfollow(animeG, true)]
+            embeds: [Embeds.error(`На аниме с таким id нет подписки`, `getfollow ${name}`)]
+        });
+    }
+
+    getcheck(message) {
+        const follows = this.animeDB.cachedFollows;
+        if (!follows.length) return message.reply({
+            embeds: [Embeds.error(`Список пуст`, `getcheck`)]
+        });
+        const checkedfollows = follows.filter((follow) => {
+            for (const dub of follow.dubs) {
+                if (dub.episodes < follow.currentEpisodes) return true;
+            }
+            return false;
+        })
+        message.reply({
+            embeds: [Embeds.followList(checkedfollows)]
         });
     }
 

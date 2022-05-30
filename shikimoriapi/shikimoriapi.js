@@ -24,7 +24,6 @@ class ShikimoriApi {
                 'User-Agent': Config.SKIKIMORI_APP,
             },
         });
-
     }
 }
 

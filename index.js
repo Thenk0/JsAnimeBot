@@ -8,9 +8,6 @@ const Bot = require("./bot/bot");
 const Embeds = require("./bot/embeds");
 const chalk = require("chalk");
 const fs = require('fs');
-const {
-    Console
-} = require("console");
 
 const opsys = process.platform;
 let dir;

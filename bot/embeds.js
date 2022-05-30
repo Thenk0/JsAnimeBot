@@ -2,8 +2,78 @@ const {
     MessageEmbed,
     Message
 } = require('discord.js');
+const axios = require("axios");
+const Canvas = require('@napi-rs/canvas');
+const Discord = require("discord.js");
 
 class Embeds {
+
+    static async canvas(message, currentTrack) {
+        const background = new Canvas.Image();
+        const imageFile = await axios(currentTrack.thumbnail, {
+            responseType: 'arraybuffer'
+        });
+        background.src = Buffer.from(imageFile.data);
+        const canvas = Canvas.createCanvas(background.width, background.height);
+        const context = canvas.getContext('2d');
+        context.drawImage(background, 0, 0, canvas.width, canvas.height);
+        const grV = context.createLinearGradient(0, 0, 0, canvas.height);
+        grV.addColorStop(0, 'rgba(0,0,0,0)');
+        grV.addColorStop(1, '#000');
+        context.fillStyle = grV;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.font = "20px serif";
+        context.fillStyle = "#888888";
+        const padding = 20;
+        const videoLengthInpx = canvas.width - padding * 2;
+        context.fillRect(padding, canvas.height - 30, videoLengthInpx, 5);
+        context.fillStyle = "#FF0000";
+        const start = currentTrack.startedAt;
+        const end = currentTrack.startedAt + currentTrack.length * 1000;
+        const videoProgress = new Date().getTime() - start;
+        const progressPercent = (videoProgress / (end - start)) * 100;
+        const progressInPx = (videoLengthInpx / 100) * progressPercent;
+        context.fillRect(padding, canvas.height - 30, progressInPx, 5);
+        context.fillStyle = "#FFFFFF";
+        context.fillText("0:00", padding, canvas.height - 35);
+        const parsedVideoLength = Embeds.parseSecondsToString(currentTrack.length);
+        const parsedVideoProgress = Embeds.parseSecondsToString(Math.floor(videoProgress / 1000));
+        const textSize = context.measureText(parsedVideoLength).width;
+        const textProgessSize = context.measureText(parsedVideoProgress).width;
+        context.fillText(parsedVideoLength, (canvas.width - padding) - textSize, canvas.height - 35);
+        context.fillText(parsedVideoProgress, (canvas.width / 2) - textProgessSize / 2, canvas.height - 5);
+        const attachment = new Discord.MessageAttachment(canvas.toBuffer(), 'bufferedfilename.png');
+        const embed = new MessageEmbed()
+            .setColor("#1F51FF")
+            .setTitle('DJ Litminer')
+            .setURL(currentTrack.url)
+            .setDescription(`Текущий трек 🎵🎵🎵`)
+            .setImage(`attachment://bufferedfilename.png`)
+            .setTimestamp()
+            .setFooter({
+                text: "Текущий трек"
+            });
+        embed.addField("Название трека:", currentTrack.title);
+        message.reply({
+            embeds: [embed],
+            files: [attachment]
+        });
+    }
+
+    static parseSecondsToString(length) {
+        const hours = Math.floor(length / (60 * 60));
+        const minutes = Math.floor((length - (hours * 60 * 60)) / 60);
+        const seconds = Math.floor((((length - (hours * 60 * 60))) - minutes * 60));
+        const parsedHours = hours == "0" ? "" : `${hours}:`;
+        const parsedMinutes =
+            (hours == 0 ?
+                minutes :
+                minutes > "9" ?
+                minutes : `0${minutes}`) + ":";
+        const parsedSeconds = seconds > "9" ? seconds : `0${seconds}`;
+        const parsedVideoLength = `${parsedHours}${parsedMinutes}${parsedSeconds}`;
+        return parsedVideoLength;
+    }
 
     static queue(queues) {
         let arrays = [];
@@ -48,14 +118,14 @@ class Embeds {
         const embed = new MessageEmbed()
             .setColor("#1F51FF")
             .setTitle('DJ Litminer')
-            .setDescription('Текущий трэк 🎵🎵🎵')
+            .setDescription('Текущий трек 🎵🎵🎵')
             .setImage(trackinfo.thumbnail)
             .setURL(trackinfo.url)
             .setTimestamp()
             .setFooter({
-                text: "Текущий трэк"
+                text: "Текущий трек"
             });
-        embed.addField("Название трэка", trackinfo.title);
+        embed.addField("Название трека", trackinfo.title);
         return embed;
     }
 
@@ -136,7 +206,7 @@ class Embeds {
         embed.addField(follow.animeName, dubInfo);
         if (guess) {
             embed.setFooter({
-                text: "Это аниме было предположено.\nT.к id не был найден в списке подписок"
+                text: "Это аниме было предположено."
             })
         }
         return embed;
@@ -326,10 +396,11 @@ class Embeds {
 
     static formatedDateWithHourChange(hourAmount) {
         const oldDateObj = new Date();
-        let newDateObj = new Date();
+        const newDateObj = new Date();
         newDateObj.setTime(oldDateObj.getTime() + (60 * 60 * 1000 * hourAmount));
         return newDateObj.toLocaleString("ru-RU");
     }
+
 }
 
 module.exports = Embeds;
