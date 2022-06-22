@@ -41,7 +41,6 @@ bot.client.on("ready", async function () {
     console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Bot is ready`));
     infoChannel = bot.client.channels.cache.get(Config.INFO_CHANNEL_ID);
     commandChannel = bot.client.channels.cache.get(Config.COMMAND_CHANNEL_ID);
-    bot.client.user.setAvatar('./avatar.png');
     checkID = setInterval(() => {
         checkShikimoriWatchList();
     }, 3600000);

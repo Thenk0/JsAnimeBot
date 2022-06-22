@@ -273,17 +273,30 @@ class Embeds {
                 text: "Озвучки тайтла"
             });
         let dubString = "";
+        let dubArr = [];
         dubs.forEach((dub, i) => {
+            if ((i % 10) == 0 && i != 0) {
+                dubArr.push(dubString);
+                dubString = "";
+            }
             if (dub.isSubbed) {
                 dubString += `\u276F ~~${i+1}) ${dub.dubName}: ${dub.episodes} ${Embeds.episodeToString(dub.episodes)}~~\n`
                 return;
             }
             dubString += `**${i+1}) ${dub.dubName}: __${dub.episodes} ${Embeds.episodeToString(dub.episodes)}__**\n`
         });
-        embed.addField(
-            "Озвучки",
-            dubString
-        );
+        dubArr.push(dubString);
+        dubArr.forEach((dubstr, i) => {
+            if (i == 0) return embed.addField(
+                "Озвучки",
+                dubstr
+            );
+            embed.addField(
+                "\u200B",
+                dubstr
+            );
+        });
+
         embed.addField(
             "Команды",
             "```css\n" +
