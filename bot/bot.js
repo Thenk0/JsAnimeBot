@@ -803,7 +803,6 @@ class Bot {
         this.unfollowProcess = false;
         this.animeUnFollowObj = {};
     }
-
     async getAnimeInfo(message) {
         this.dubPick = true;
         await this.webScraper.initialize();
@@ -898,7 +897,6 @@ class Bot {
             '!abort - Останавливает процесс follow\n\n' +
             '!unfollow <ID> - Выдает список озвучек отслеживаемых для этого тайтла и позволяет отписаться от них\n\n' +
             '!help - Выводит это сообщение\n\n' +
-            '!awawawa - awawawa' +
             '```'
         );
     }

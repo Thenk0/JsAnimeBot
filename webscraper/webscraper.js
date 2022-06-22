@@ -1,9 +1,6 @@
 const puppeteer = require("puppeteer");
 const chalk = require("chalk");
 const Embeds = require("../bot/embeds");
-
-
-
 class WebScraper {
     async initialize() {
         this.browser = await puppeteer.launch({

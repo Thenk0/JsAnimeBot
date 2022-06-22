@@ -17,10 +17,8 @@ class AnimeDB {
     writeAnimeToDB(animeObj) {
         // fix for non existant russian name
         let titleName = animeObj.russian;
-        if (titleName == "") {
-            titleName = animeObj.name;
-        }
-        let newanimeObj = {
+        if (titleName == "") titleName = animeObj.name;
+        const newanimeObj = {
             animeID: animeObj.id,
             animeURL: null,
             maxEpisodes: animeObj.episodes,
@@ -63,20 +61,22 @@ class AnimeDB {
                     throw res.error;
             }
         );
-        sqlite.run(
-            `CREATE TABLE IF NOT EXISTS user_subs (
+        sqlite.run(`CREATE TABLE IF NOT EXISTS dubNames (
             id INTEGER PRIMARY KEY,
-            user_id STRING NOT NULL,
-            sub INTEGER NOT NULL
+            dubName VARCHAR(255)
             );`,
             function (res) {
                 if (res.error)
                     throw res.error;
             }
         );
-        sqlite.run(`CREATE TABLE IF NOT EXISTS dubNames (
+        sqlite.run(`CREATE TABLE IF NOT EXISTS dubNames_animeFollows (
             id INTEGER PRIMARY KEY,
-            dubName VARCHAR(40)
+            animeFollowID INTEGER,
+            dubNameID INTEGER,
+            episodes INTEGER UNSIGNED,
+            FOREIGN KEY (animeFollowID) REFERENCES animeFolows(animeID)
+            FOREIGN KEY (dubNameID) REFERENCES animeFolows(id)
             );`,
             function (res) {
                 if (res.error)
@@ -95,13 +95,11 @@ class AnimeDB {
                     throw res.error;
             }
         );
-        sqlite.run(`CREATE TABLE IF NOT EXISTS dubNames_animeFollows (
+        sqlite.run(
+            `CREATE TABLE IF NOT EXISTS user_subs (
             id INTEGER PRIMARY KEY,
-            animeFollowID INTEGER,
-            dubNameID INTEGER,
-            episodes INTEGER UNSIGNED,
-            FOREIGN KEY (animeFollowID) REFERENCES animeFolows(animeID)
-            FOREIGN KEY (dubNameID) REFERENCES animeFolows(id)
+            user_id STRING NOT NULL,
+            sub INTEGER NOT NULL
             );`,
             function (res) {
                 if (res.error)
@@ -196,7 +194,6 @@ class AnimeDB {
             animeObj.dubs[i].episodes = element.newEpisodeNum;
             const dubID = this.getDubIDByName(element.dubName);
             sqlite.connect(this.dbName);
-            // console new episode
             sqlite.run("UPDATE dubNames_animeFollows SET episodes=? WHERE dubNameID=? AND animeFollowID=?", [newEpisodeNum, dubID, animeObj.animeID]);
             sqlite.close();
             delete animeObj.dubs[i].newEpisodeNum;
@@ -208,6 +205,9 @@ class AnimeDB {
     updateEpisode(anime, shikiObj) {
         anime.currentEpisodes = shikiObj.episodes_aired;
         anime.maxEpisodes = shikiObj.episodes;
+        const update = this.getFollowedAnimeCached(anime.animeID);
+        update.currentEpisodes = anime.currentEpisodes;
+        update.maxEpisodes = anime.maxEpisodes;
         sqlite.connect(this.dbName);
         console.log(chalk.blue(`${Embeds.formatedDate()}: AnimeDB) \t${anime.animeName} episodes updated`));
         sqlite.run("UPDATE animeFollows SET currentEpisodes=?, maxEpisodes=? WHERE animeID=?", [anime.currentEpisodes, anime.maxEpisodes, anime.animeID]);
@@ -362,7 +362,7 @@ class AnimeDB {
             return;
         }
     }
-    // TODO: Rewrite to new db
+
     unfollow(animeID) {
         for (let i = 0; i < this.cachedFollows.length; i++) {
             const animeObj = this.cachedFollows[i];
