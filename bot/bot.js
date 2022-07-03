@@ -731,14 +731,14 @@ class Bot {
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `follow ${name}`)]
             });
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetAnimeInfoByID has failed!; ${error}\n`);
-            return await webScraperChecker.close();
+            return await this.webScraper.close();
 
         }
         if (info == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `follow ${name}`)]
             });
-            return await webScraperChecker.close();
+            return await this.webScraper.close();
 
         }
         await this.webScraper.close();
