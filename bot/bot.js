@@ -187,6 +187,22 @@ class Bot {
     handleMemeComands(args, command, message) {
         const VC = message.member.voice.channel;;
         switch (command) {
+            case "awawawa":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                };
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "waw.mp3");
+                message.delete();
+                break;
             case "unsub":
                 this.animeDB.unsubUser(message.member.id);
                 message.reply({
@@ -297,19 +313,7 @@ class Bot {
     }
 
     handleCommand(args, command, message) {
-        let VC;
         switch (command) {
-            case "awawawa":
-                if (this.lock) return message.reply({
-                    embeds: [Embeds.error("Бот не может принимать команды в данный момент", "awawawa")]
-                });
-                VC = message.member.voice.channel;
-                if (!VC) return message.reply({
-                    embeds: [Embeds.error("Отправитель не в голосовом канале", "awawawa")]
-                });
-                this.playsound(VC, "waw.mp3");
-                break;
-
             case "forceupdate":
                 if (this.checkID == 0) return message.reply(`Проверка еще не запущена`);
                 clearInterval(this.checkID);
@@ -452,9 +456,7 @@ class Bot {
                     "abort",
                     "getcheck",
                     "unfollow",
-                    "getdubs",
                     "help",
-                    "awawawa"
                 ];
                 this.notRecognized(message, command, commands);
                 break;

@@ -45,7 +45,8 @@ bot.client.on("ready", async function () {
         checkShikimoriWatchList();
     }, 3600000);
     checkShikimoriWatchList();
-
+    // change bot avatar
+    // bot.client.user.setAvatar("./avatar.png");
     bot.checkID = checkID;
     bot.setCommands(bot.client);
     console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Commands are set`));
