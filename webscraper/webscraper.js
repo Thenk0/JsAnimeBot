@@ -362,7 +362,6 @@ class WebScraper {
         await page.waitForSelector("#player-iframe");
         const titleName = await page.$eval("h1.p-0", (el) => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
         let imgSrc = await page.$eval(".poster-img", (el) => el.getAttribute("src"));
-        imgSrc = `https://aniu.ru${imgSrc}`;
         await page.close();
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Got image ${imgSrc}`));
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Got title ${titleName}`));
