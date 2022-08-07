@@ -231,6 +231,23 @@ class Bot {
                 this.playsound(VC, "sex.mp3");
                 message.delete();
                 break;
+            case "tof":
+            case "haveyouheard":
+                if (this.lock) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Бот не может принимать команды в данный момент", "??????")]
+                    });
+                }
+                if (!VC) {
+                    message.delete();
+                    return message.channel.send({
+                        embeds: [Embeds.error("Отправитель не в голосовом канале", "??????")]
+                    });
+                }
+                this.playsound(VC, "tof.mp3");
+                message.delete();
+                break;
             case "augh":
                 if (this.lock) {
                     message.delete();
