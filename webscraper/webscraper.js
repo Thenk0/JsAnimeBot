@@ -217,7 +217,7 @@ class WebScraper {
         for (let i = 0; i < dubs.length; i++) {
             const element = dubs[i];
             const value = await element.evaluate(el => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
-            dubText = `${dubText}\n${i+1}): ${value}`;
+            dubText = `${dubText}\n${i + 1}): ${value}`;
         }
         await page.close();
         return dubText;
@@ -270,11 +270,18 @@ class WebScraper {
         let frame = await elementHandle.contentFrame();
         await frame.waitForSelector(".serial-panel");
         console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Player is ready`));
-        let dubs = await frame.$$(".serial-translations-box > .dropdown > .dropdown-content > div");
+        let dubs = await frame.$$(".serial-translations-box > .dropdown > .dropdown-content > div > .inner-item");
         let dubsArray = [];
         for (let i = 0; i < dubs.length; i++) {
             const element = dubs[i];
-            let value = await element.evaluate(el => el.textContent.replace(/[\n\r]+|[\s]{2,}/g, ' ').trim());
+            const value = await element.evaluate(el => {
+                const spans = el.children;
+                let dubText = spans[0].textContent;
+                if (spans.length > 2) {
+                    dubText += " SUB";
+                }
+                return dubText
+            });
             dubsArray.push(value);
         }
         let newDubsArray = [];
@@ -292,18 +299,16 @@ class WebScraper {
             await frame.waitForSelector(".serial-panel");
             await frame.click("body > .main-box > .serial-panel > .serial-translations-box > .select-button")
             console.log(chalk.magenta(`${Embeds.formatedDate()}: WebScraper) Clicked on dub ${element}`));
+            let el = null
             if (element.includes("SUB")) {
-                const newelement = element.replace("SUB", "");
-                const [el] = await frame.$x(`//div[span[text()='${newelement}'] and span[text()='SUB']]`);
-                await Promise.all([
-                    el.click(),
-                    frame.waitForNavigation({
-                        waitUntil: 'load'
-                    }),
-                ]);
+                const newelement = element.replace(" SUB", "");
+                [el] = await frame.$x(`//div[span[text()='${newelement}'] and span[text()='SUB']]`);
             } else {
-                const [el] = await frame.$x(`//div[span[text()='${element}']]`);
-                await Promise.all([
+                [el] = await frame.$x(`//div[span[text()='${element}']]`);
+            }
+            const isSelected = await el.evaluate(el => el.parentElement.classList.contains('selected'));
+            if (!isSelected) {
+            await Promise.all([
                     el.click(),
                     frame.waitForNavigation({
                         waitUntil: 'load'
