@@ -522,7 +522,7 @@ class Bot {
                 await message.channel.send({
                     embeds: [Embeds.currentTrack(nextSong)]
                 });
-                const stream = await play.stream(nextSong.url);
+                const stream = await play.stream(nextSong.url, { quality: 1 });
                 const resource = Voice.createAudioResource(stream.stream, {
                     inputType: stream.type
                 });
@@ -608,7 +608,7 @@ class Bot {
                 length: yt_info[0].durationInSec
             };
             try {
-                const stream = await play.stream(yt_info[0].url);
+                const stream = await play.stream(yt_info[0].url, { quality: 1 });
                 await message.channel.send({
                     embeds: [Embeds.currentTrack({
                         url: yt_info[0].url,
@@ -633,7 +633,18 @@ class Bot {
                 this.lock = false;
             }
         });
+        const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
+            const newUdp = Reflect.get(newNetworkState, 'udp');
+            clearInterval(newUdp?.keepAliveInterval);
+        }
 
+        connection.on('stateChange', (oldState, newState) => {
+            const oldNetworking = Reflect.get(oldState, 'networking');
+            const newNetworking = Reflect.get(newState, 'networking');
+
+            oldNetworking?.off('stateChange', networkStateChangeHandler);
+            newNetworking?.on('stateChange', networkStateChangeHandler);
+        });
         this.musicPlayer.on(Voice.AudioPlayerStatus.Idle, async () => {
             if (this.musicQueue.length == 0) {
                 const con = Voice.getVoiceConnection(guildId);
@@ -652,7 +663,7 @@ class Bot {
                     embeds: [Embeds.currentTrack(nextSong)]
                 });
                 try {
-                    const stream = await play.stream(nextSong.url);
+                    const stream = await play.stream(nextSong.url, { quality: 1 });
                     const resource = Voice.createAudioResource(stream.stream, {
                         inputType: stream.type
                     });
@@ -691,7 +702,11 @@ class Bot {
             selfDeaf: false,
             selfMute: false
         });
-        const player = Voice.createAudioPlayer();
+        const player = Voice.createAudioPlayer({
+            behaviors: {
+                noSubscriber: Voice.NoSubscriberBehavior.Play
+            }
+        });
         connection.subscribe(player);
         player.on(Voice.AudioPlayerStatus.Playing, () => {
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${filename}`));
@@ -700,6 +715,19 @@ class Bot {
             console.error(chalk.red(`${Embeds.formatedDate()}: Bot) Audio failed ${error.message}`));
             fs.appendFileSync(dir + "/animebot_error.log", `ERROR| ${Embeds.formatedDate()}: Bot) Audio failed ${error}\n`);
         });
+        const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
+            const newUdp = Reflect.get(newNetworkState, 'udp');
+            clearInterval(newUdp?.keepAliveInterval);
+        }
+
+        connection.on('stateChange', (oldState, newState) => {
+            const oldNetworking = Reflect.get(oldState, 'networking');
+            const newNetworking = Reflect.get(newState, 'networking');
+
+            oldNetworking?.off('stateChange', networkStateChangeHandler);
+            newNetworking?.on('stateChange', networkStateChangeHandler);
+        });
+
         connection.on(Voice.VoiceConnectionStatus.Ready, () => {
             console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Ready to play audio`));
             const resource = Voice.createAudioResource(path.join(__dirname, "..", "audio", filename));
