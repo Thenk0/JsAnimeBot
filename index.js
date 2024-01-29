@@ -214,6 +214,17 @@ async function checkNewFollowedEpisodes() {
         }
         for (let j = 0; j < checkResult.length; j++) {
             const element = checkResult[j];
+            if (element === null) {
+                console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Dub no longer exists for anime ${anime.animeName}`));
+                fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Dub no longer exists ${anime.animeURL}\n`);
+                commandChannel.send({
+                    content: `Внимание! <@&${Config.INFO_ROLE_ID}>!`,
+                    embeds: [Embeds.animeError(`Аниме ${anime.animeName} более не имеет озвучки в подписке, произведена автоматическая отписка`)]
+                })
+                console.log(anime)
+                animeDB.unfollow(anime.animeID)
+                continue
+            }
             if (!element.hasNewEpisodes) continue;
             infoChannel.send({
                 content: `<@&${Config.INFO_ROLE_ID}>`,

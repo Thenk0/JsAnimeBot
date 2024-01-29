@@ -288,6 +288,7 @@ class AnimeDB {
                 const tableInfoElement = tableInfo[j];
                 const dubName = sqlite.run("SELECT * FROM dubNames WHERE id=?", [tableInfoElement.dubNameID]);
                 follows[i].dubs.push({
+                    id: tableInfoElement.id,
                     dubName: dubName[0].dubName,
                     episodes: tableInfoElement.episodes,
                     checkNewEpisodes: false

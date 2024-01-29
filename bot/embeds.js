@@ -157,6 +157,17 @@ class Embeds {
         return embed;
     }
 
+    static animeError(command) {
+        const embed = new MessageEmbed()
+            .setColor("#FF0000")
+            .setTitle("Ошибка")
+            .addField(
+                "Ошибка",
+                command
+            );
+        return embed;
+    }
+
     static followList(follows) {
         const embed = new MessageEmbed()
             .setColor("#DC143C")

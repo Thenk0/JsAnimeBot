@@ -450,12 +450,15 @@ class Bot {
                 }
                 this.getfollow(message, args);
                 break;
+            case "follows":
             case "getfollows":
                 this.getfollows(message);
                 break;
+            case "check":
             case "getcheck":
                 this.getcheck(message);
                 break;
+            case "list":
             case "getlist":
                 this.getlist(message);
                 break;
@@ -932,10 +935,10 @@ class Bot {
         message.reply(
             '```css\n' +
             '!forceUpdate - Останавливает проверку по времени и запускает её снова\n\n' +
-            '!getlist - Выводит список аниме и ID на шикимори\n\n' +
+            '!getlist|!list - Выводит список аниме и ID на шикимори\n\n' +
             '!getfollow <ID> - Выдает список подписок для отдельного тайтла\n\n' +
-            '!getfollows - Выдает список отслеживаемых тайтлов и озвучек.\n\n' +
-            '!getcheck - Выдает список проверяемых тайтлов.\n\n' +
+            '!getfollows|!follows - Выдает список отслеживаемых тайтлов и озвучек.\n\n' +
+            '!getcheck|!check - Выдает список проверяемых тайтлов.\n\n' +
             '!follow <ID> - Запускает процесс подписки, принимает как параметр <ID> аниме на шикимори.\n' +
             '\tВо время процесса Follow, все остальные команды заблокированы\n\n' +
             '!changeurl <ID> <URL> - Изменяет URL аниме на aniu для выбранного тайтла [Not Implemented]\n' +

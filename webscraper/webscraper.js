@@ -141,6 +141,10 @@ class WebScraper {
             if (dubName.includes("SUB")) {
                 const newelement = dubName.replace("SUB", "");
                 const [el] = await frame.$x(`//div[span[text()='${newelement}'] and span[text()='SUB']]`);
+                if (typeof el === "undefined") {
+                    dubs[i] = null;
+                    continue;
+                }
                 await Promise.all([
                     el.click(),
                     frame.waitForNavigation({
@@ -149,6 +153,10 @@ class WebScraper {
                 ]);
             } else {
                 const [el] = await frame.$x(`//div[span[text()='${dubName}']]`);
+                if (typeof el === "undefined") {
+                    dubs[i] = null;
+                    continue;
+                }
                 await Promise.all([
                     el.click(),
                     frame.waitForNavigation({
