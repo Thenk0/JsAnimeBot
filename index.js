@@ -103,7 +103,6 @@ async function checkShikimoriWatchList() {
         return;
     }
     let suppressNotifications = animeDB.cachedAnime.length < 1;
-
     const listIDs = animes.data.map((anime) => {
         return parseInt(anime.target_id);
     });
@@ -199,7 +198,7 @@ async function checkNewFollowedEpisodes() {
         }
         let checkResult;
         try {
-            checkResult = await webScraperChecker.getEpisodes(anime.animeURL, checkDubs);
+            checkResult = await webScraperChecker.getEpisodes(anime.animeID, checkDubs);
         } catch (error) {
             await webScraperChecker.reinitialize();
             console.log(error);
@@ -212,6 +211,7 @@ async function checkNewFollowedEpisodes() {
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) Anime url has changed for ${anime.animeURL}\n`);
             return;
         }
+
         for (let j = 0; j < checkResult.length; j++) {
             const element = checkResult[j];
             if (element === null) {

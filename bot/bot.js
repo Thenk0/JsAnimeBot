@@ -34,7 +34,8 @@ class Bot {
         this.webScraper = webscraper;
         this.animeDB = animeDB;
         this.client = new Discord.Client({
-            intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"]
+            intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_VOICE_STATES"],
+            restRequestTimeout: 60000 // change the timeout to 1 minute
         });
         this.client.login(Config.BOT_TOKEN);
         this.checkFunction = checkFunction;
@@ -534,6 +535,7 @@ class Bot {
                 this.currentTrack = nextSong;
                 trynext = false;
             } catch (error) {
+                console.log(error);
                 if (this.musicQueue.length == 0) trynext = false;
                 console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio ${nextSong.title} is unavailable`));
                 message.channel.send({
@@ -625,6 +627,7 @@ class Bot {
                 this.musicPlayer.play(resource);
                 console.log(chalk.green(`${Embeds.formatedDate()}: Bot) Playing audio ${currentTrack}`));
             } catch (error) {
+                console.log(error);
                 console.log(chalk.red(`WARN | ${Embeds.formatedDate()}: Bot) Audio is unavailable`));
                 message.channel.send({
                     embeds: [Embeds.error(`Видео "${currentTrack}" недоступно`, "play")]
@@ -675,6 +678,7 @@ class Bot {
                     this.currentTrack = nextSong;
                     trynext = false;
                 } catch (error) {
+                    console.log(error)
                     if (this.musicQueue.length == 0) {
                         const con = Voice.getVoiceConnection(guildId);
                         if (typeof con !== "undefined") con.destroy();
@@ -776,6 +780,7 @@ class Bot {
         try {
             info = await this.webScraper.getAnimeInfoByID(id);
         } catch (error) {
+            console.log(error);
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get anime info failed! For more information check error.log`));
             message.reply({
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `follow ${name}`)]
@@ -860,18 +865,19 @@ class Bot {
         try {
             dubs = await this.webScraper.getDubEpisodes(this.animeFollowObj.url);
         } catch (error) {
+            console.log(error);
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get dub episodes failed! For more information check error.log`));
             message.reply({
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm`)]
             });
             fs.appendFileSync(dir + "/animebot_error.log", `WARN| ${Embeds.formatedDate()}: WebScraper) GetDubEpisodes has failed!; ${error}\n`);
-            return await webScraperChecker.close();
+            return;
         }
         if (dubs == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm`)]
             });
-            return await webScraperChecker.close();
+            return;
         }
         await this.webScraper.close();
         this.animeFollowObj.dubInfo = dubs;
@@ -912,18 +918,19 @@ class Bot {
         try {
             info = await this.webScraper.getAnimeInfoByID(id);
         } catch (error) {
+            console.log(error);
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get anime info failed! For more information check error.log`));
             message.reply({
                 embeds: [Embeds.error(`[Ошибка], Webscraper упал во время запроса`, `confirm ${id}`)]
             });
             console.warn(chalk.bold.redBright(`Warning! ${Embeds.formatedDate()}: WebScraper) Get anime info failed! For more information check error.log`));
-            return await webScraperChecker.close();
+            return;
         }
         if (info == 404) {
             message.reply({
                 embeds: [Embeds.error(`[404], аниме по этой ссылке не найдено`, `confirm ${id}`)]
             });
-            return await webScraperChecker.close();
+            return;
         }
         this.webScraper.close();
         message.reply({

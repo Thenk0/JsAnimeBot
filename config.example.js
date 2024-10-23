@@ -7,5 +7,6 @@ class Config {
     static SHIKIMORI_ID = "INSERT ID";
     static SKIKIMORI_APP = "INSERT APP NAME";
     static INFO_ROLE_ID = "INSERT ROLE ID";
+    static KODIK_API_KEY = "INSERT API KEY"
 }
 module.exports = Config;
